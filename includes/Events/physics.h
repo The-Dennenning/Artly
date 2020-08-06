@@ -1,30 +1,9 @@
-#include <iostream>
-#include <vector>
-#include <math.h>
-#include <string.h>
-#include "bitmap.h"
-
-using namespace std;
-
-#ifndef _EVENT_HPP
-#define _EVENT_HPP
+#include "./events.h"
 
 struct collision
 {
 	float* pos;
 	int* color;
-};
-
-class Event {
-	public:
-		Event(Bitmap *b, int start, int duration) : _b(b), _start(start), _duration(duration) {}
-
-		virtual void Activate(int frame_num) = 0;
-
-	protected:
-		Bitmap* _b; 
-		int _start;
-		int _duration;
 };
 
 class Circle
@@ -170,6 +149,3 @@ int* Circle::get_color(Circle* c)
 
 	return ret_rgb;
 }
-
-
-#endif

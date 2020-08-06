@@ -1,32 +1,11 @@
-#include <iostream>
-#include <vector>
-#include <math.h>
-#include <string.h>
-#include "bitmap.h"
+#include "..\events.h"
 
 using namespace std;
 
-#ifndef _EVENT_HPP
-#define _EVENT_HPP
-
-class Event {
-	public:
-		Event(int start, int duration, int width, int height) : 
-			_start(start), _duration(duration), _width(width), _height(height) {}
-
-		virtual void Activate(Bitmap &b, int frame_num) = 0;
-
-	protected:
-		int _start;
-		int _duration;
-		int _width;
-		int _height;
-};
-
-class Filter : public Event {
+class Rewrite : public Event {
 
 	public:
-		Filter(int start, int dur, int width, int height, int type, vector <vector <vector <int> > > rules, vector<int> first) :
+		Rewrite(int start, int dur, int width, int height, int type, vector <vector <vector <int> > > rules, vector<int> first) :
 			Event(start, dur, width, height), _step(0), _type(type), _rules(rules)
 			{
 				for (int i = 0; i < _height; i++)
@@ -40,12 +19,10 @@ class Filter : public Event {
 					_grid[0][i] = first[i];
 			}
 
-		~Filter()
+		~Rewrite()
 		{}
 		
-		virtual void Activate(Bitmap &b, int frame_num);
-		
-		Bitmap *_b;
+		virtual void Activate(Bitmap *b, Layer *l);
 		
 	private:
 
@@ -56,34 +33,33 @@ class Filter : public Event {
 
 		vector <vector <int> > _grid;
 
-		void Rewrite();
+		void getRewrite(Bitmap *b);
 		int* getColor(int n);
+		void setColor(Bitmap *b, int row, int col, int* color, int _type);
 };
 
 
-void Filter::Activate(Bitmap &b, int frame_num)
+void Rewrite::Activate(Bitmap *b, Layer *l)
 {
-	_b = &b;
 
-	//Activate if frame number is after start but before end of duration
-	if (frame_num >= _start && frame_num < _start + _duration)
+	vector<uint8_t> frame;
+
+	for (int n = 0; n < l->_frame_num; n++)
 	{
-		switch(_type)
-		{
-			case 0:
-				Rewrite();
-				break;
-		}
-	}
+		getRewrite(b);
+		_step++;
 
-	_step++;
+		getFrame(frame, *b);
+		l->_frame_data.push_back(frame);
+		cout << "	Rewrite Frame " << n << " Generated" << endl; 
+	}
 }
 
 //Counts neighbors of pixel at position i, j with area of effect AE
 //	Gets new color, returned in newrgb
 //	Only considers "neighbors" that are in state specified by 'states'
 //		state_num determines how many states to consider
-void Filter::Rewrite()
+void Rewrite::getRewrite(Bitmap *_b)
 {
 	/*
 	cout << "	Initiating Rewrite " << _step << "..." << endl;
@@ -144,14 +120,8 @@ void Filter::Rewrite()
 							//Set grid cell to resulting value
 							_grid[_step + 1][j_out] = rule_out[l];
 
-#ifdef SYMM
-							//Set color of bitmap image
-							_b->getPixel(_step + 1, j_out).setRGB(getColor(rule_out[l]));
-							_b->getPixel(j_out, _step + 1).setRGB(getColor(rule_out[l]));
-#else
-							//Set color of bitmap image
-							_b->getPixel(_step + 1, j_out).setRGB(getColor(rule_out[l]));
-#endif
+							setColor(_b, _step + 1, j_out, getColor(rule_out[1]), _type);
+
 							//iterate output column counter
 							j_out++;
 						}
@@ -169,14 +139,7 @@ void Filter::Rewrite()
 			//Set grid cell to resulting value
 			_grid[_step + 1][j_out] = _grid[_step][j_cur];
 
-#ifdef SYMM
-			//Set color of bitmap image
-			_b->getPixel(_step + 1, j_out).setRGB(getColor(_grid[_step][j_cur]));
-			_b->getPixel(j_out, _step + 1).setRGB(getColor(_grid[_step][j_cur]));
-#else
-			//Set color of bitmap image
-			_b->getPixel(_step + 1, j_out).setRGB(getColor(_grid[_step][j_cur]));
-#endif
+			setColor(_b, _step + 1, j_out, getColor(_grid[_step][j_cur]), _type);
 
 			j_cur++;
 			j_out++;
@@ -193,8 +156,55 @@ void Filter::Rewrite()
 	*/
 }
 
+void Rewrite::setColor(Bitmap *_b, int row, int col, int* color, int _type)
+{
+	if (_type % 9 == 0)
+	{
+		_b->getPixel(row, col).setRGB(color);
+	}
+	else if (_type % 9 == 1)
+	{
+		_b->getPixel(row, _height - col).setRGB(color);
+	}
+	else if (_type % 9 == 2)
+	{
+		_b->getPixel(_width - row, _height - col).setRGB(color);
+	}
+	else if (_type % 9 == 3)
+	{
+		_b->getPixel(_width - row, col).setRGB(color);
+	}
+	else if (_type % 9 == 4)
+	{
+		_b->getPixel(_width - row, _height - col).setRGB(color);
+		_b->getPixel(row, col).setRGB(color);
+	}
+	else if (_type % 9 == 5)
+	{
+		_b->getPixel(row, _height - col).setRGB(color);
+		_b->getPixel(_width - row, col).setRGB(color);
+	}
+	else if (_type % 9 == 6)
+	{
+		_b->getPixel(row, _height - col).setRGB(color);
+		_b->getPixel(row, col).setRGB(color);
+	}
+	else if (_type % 9 == 7)
+	{
+		_b->getPixel(_width - row, col).setRGB(color);
+		_b->getPixel(row, col).setRGB(color);
+	}
+	else if (_type % 9 == 8)
+	{
+		_b->getPixel(_width - row, col).setRGB(color);
+		_b->getPixel(_width - row, _height - col).setRGB(color);
+		_b->getPixel(row, _height - col).setRGB(color);
+		_b->getPixel(row, col).setRGB(color);
+	}
+}
+
 //Takes integer value and returns rgb value
-int* Filter::getColor(int n)
+int* Rewrite::getColor(int n)
 {
 	int* color = new int[3];
 
@@ -234,5 +244,3 @@ int* Filter::getColor(int n)
 
 	return color;
 }
-
-#endif

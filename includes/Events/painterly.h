@@ -1,88 +1,36 @@
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <math.h>
-#include <string.h>
-#include "bitmap.h"
-
-using namespace std;
-
-#ifndef _EVENT_HPP
-#define _EVENT_HPP
-
-
-// Computes n choose s, efficiently
-double Binomial(int n, int s)
-{
-    double        res;
-
-    res = 1;
-    for (int i = 1 ; i <= s ; i++)
-        res = (n - i + 1) * res / i ;
-
-    return res;
-}// Binomial
-
-
-class Event {
-	public:
-		Event(Bitmap *b, int start, int duration) : _b(b), _start(start), _duration(duration) {}
-
-		virtual void Activate(int frame_num) = 0;
-
-	protected:
-		Bitmap* _b; 
-		int _start;
-		int _duration;
-};
+#include "./events.h"
 
 
 class Stroke { // Data structure for holding painterly strokes.
-public:
-   Stroke(void);
-   Stroke(unsigned int radius, unsigned int x, unsigned int y,
-          unsigned char r, unsigned char g, unsigned char b, unsigned char a);
+
+	public:
+		Stroke::Stroke(int iradius, int ix, int iy, int ir, int ig, int ib, int ia) 
+			: radius(iradius),x(ix),y(iy),r(ir),g(ig),b(ib),a(ia) {}
    
    // data
-   unsigned int radius, x, y;	// Location for the stroke
-   unsigned char r, g, b, a;	// Color
+   int radius, x, y;	// Location for the stroke
+   int r, g, b, a;		// Color
 };
-
-///////////////////////////////////////////////////////////////////////////////
-//
-//      Build a Stroke
-//
-///////////////////////////////////////////////////////////////////////////////
-Stroke::Stroke() {}
-
-///////////////////////////////////////////////////////////////////////////////
-//
-//      Build a Stroke
-//
-///////////////////////////////////////////////////////////////////////////////
-Stroke::Stroke(unsigned int iradius, unsigned int ix, unsigned int iy,
-               unsigned char ir, unsigned char ig, unsigned char ib, unsigned char ia) :
-   radius(iradius),x(ix),y(iy),r(ir),g(ig),b(ib),a(ia)
-{}
 
 class Painter : public Event 
 {
 	public:
 		Painter();
-		Painter(Bitmap *b, int start, int duration, Bitmap *r, int firstLayer, int *strokeNum, int strokeMax, int radius) 
-			: Event(b, start, duration), _r(r), _firstLayer(firstLayer), _strokeMax(strokeMax), _radius(radius), _width(b->getSize(0)), _height(b->getSize(1)) 
+		Painter(int start, int duration, Bitmap *b, Bitmap *r, int firstLayer, int *strokeNum, int strokeMax, int radius) 
+			: Event(start, duration), _r(r), _firstLayer(firstLayer), _strokeMax(strokeMax), _radius(radius), _width(b->getSize(0)), _height(b->getSize(1)) 
 		{
 			cout << "	Generating Reference..." << endl;
 			Generate_Reference();
 			cout << "	Generating Layer..." << endl;
-			Generate_Layer();
+			Generate_Layer(b);
+
 			*strokeNum = _strokeNum / 20;
 			_duration = _strokeNum / 20;
 		}
 
 		~Painter();
 		
-		void Activate(int frame_num);
+		void Activate(Bitmap *b, int frame_num);
 
 	private:
 		int _firstLayer;
@@ -100,20 +48,20 @@ class Painter : public Event
 		void Generate_Reference();
 
 		//Generates layer of strokes
-		void Generate_Layer();
+		void Generate_Layer(Bitmap *b);
 
 		//Paints a single stroke from layer
-		void Paint_Stroke(const Stroke& s);
+		void Paint_Stroke(Bitmap *b, const Stroke& s);
 };
 
 
-void Painter::Activate(int frame_num)
+void Painter::Activate(Bitmap* b, int frame_num)
 {
 	if (frame_num < _start || frame_num >= _start + _duration)
 		return;
 
 	for (int i = 0; i < 20; i++)
-		Paint_Stroke(*_s[(frame_num - _start) * 20 + i]);
+		Paint_Stroke(b, *_s[(frame_num - _start) * 20 + i]);
 }
 
 
@@ -216,7 +164,7 @@ void Painter::Generate_Reference()
 //			Applies paint strokes to canvas
 //		
 ///////////////////////////////////////////////////////////////////////////////
-void Painter::Generate_Layer()
+void Painter::Generate_Layer(Bitmap* _b)
 {
 	//Create new set of strokes
 	_strokeNum = 0;
@@ -316,24 +264,18 @@ void Painter::Generate_Layer()
 	}
 
 	//Shuffle, for natural look
-	random_shuffle(_s.begin(), _s.end());
+	std::random_shuffle(_s.begin(), _s.end());
 
 	//Limit number of strokes layer can have
 	if (_strokeNum > _strokeMax) _strokeNum = _strokeMax;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-//
-//      Helper function for the painterly filter; paint a stroke at
-// the given location
-//
-///////////////////////////////////////////////////////////////////////////////
-void Painter::Paint_Stroke(const Stroke& s) {
-   int radius_squared = (int)s.radius * (int)s.radius;
-   for (int x_off = -((int)s.radius); x_off <= (int)s.radius; x_off++) {
-      for (int y_off = -((int)s.radius); y_off <= (int)s.radius; y_off++) {
-         int x_loc = (int)s.x + x_off;
-         int y_loc = (int)s.y + y_off;
+void Painter::Paint_Stroke(Bitmap* _b, const Stroke& s) {
+   int radius_squared = s.radius * s.radius;
+   for (int x_off = -(s.radius); x_off <= s.radius; x_off++) {
+      for (int y_off = -(s.radius); y_off <= s.radius; y_off++) {
+         int x_loc = s.x + x_off;
+         int y_loc = s.y + y_off;
          // are we inside the circle, and inside the image?
          if ((x_loc >= 0 && x_loc < _height && y_loc >= 0 && y_loc < _width)) {
             int dist_squared = x_off * x_off + y_off * y_off;
@@ -363,5 +305,3 @@ void Painter::Paint_Stroke(const Stroke& s) {
       }
    }
 }
-
-#endif
