@@ -1,5 +1,2 @@
-smol:
-	g++ -DSMOL main.cpp -o cellular
-
-regu:
-	g++ main.cpp -o cellular
+default:
+	g++ src/main.cpp -o artly

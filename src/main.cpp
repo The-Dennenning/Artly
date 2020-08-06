@@ -1,183 +1,178 @@
 #include <iostream>
 #include <fstream>
 #include <string.h>
-#include "events.h"
-#include "bitmap.h"
-#include "gif.h"
+#include <time.h>
 
+#include "..\includes\render.h"
+#include "..\includes\events.h"
+#include "..\includes\bitmap.h"
+#include "..\includes\gif.h"
+
+#include "..\includes\Events\fractal.h"
+#include "..\includes\Events\rewrite.h"
+
+using namespace std;
 
 int main(int argc, char** argv)
-// Main with arguments - from terminal you can add arguments to this.
-// int argc and argv standard arguments for main.
-// argc - how many arguments supplied to program
-//      counts name of program itself.
-//
-// argv - values of the arguments. 
-//      array of strings
-//
-// argv different values:
-//      argv[0] = the program name
-//      argv[1] = the bitmap name
-//      argv[2] = the output file name
-//
-// argc = argument count; argv = argument value
 {
-    // If number of arguments is wrong, then will spit out usage message (error message) and 
-    // exit the program.
-    if(argc != 3)
+    if(argc != 2)
     {
-        cout << "usage:\n" << "cellular inputfile.bmp outputfile.gif" << endl;
+        cout << "usage:\n" << "artly outputfile.gif" << endl;
 
         return 0;
     }
 
+    // Seeding random number generator.
+    srand(time(NULL));
 
-    // Will throw if the bitmap has a bad header.
-    try
-    {
-        // Seeding random number generator.
-        srand(time(NULL));
+    // Declaring the object for ifstream  
+    ifstream in;
+    // Declaring the object bitmap
+    Bitmap image;
+    // Declaring the object for writing to external data file.
+    ofstream out;
 
-        // Declaring the object for ifstream  
-        ifstream in;
-        // Declaring the object bitmap
-        Bitmap image;
-        // Declaring the object for writing to external data file.
-        ofstream out;
+    cout << "Program Starting..." << endl;
 
-        cout << "Program Starting..." << endl;
+    // Reading in the name of the bitmap.
+    string infile("temp.bmp");
+    // note using the string clas you can pass in a string as an argument
+    // like a copy constructor to quickly create a string.
 
-        // Reading in the name of the bitmap.
-        string infile(argv[1]);
-        // note using the string clas you can pass in a string as an argument
-        // like a copy constructor to quickly create a string.
+    // putting in the output file name into outfile  
+    string outfile(argv[1]);
 
-        // putting in the output file name into outfile  
-        string outfile(argv[2]);
+    cout << "Seed Image Loading..." << endl;
 
-        cout << "Seed Image Loading..." << endl;
+    // Opening the file for reading in, using infile as the name of the bitmap file
+    // and "ios::binary" means reading in the raw data - binary. This will transfer
+    // bitmap from the object in to bitmap image.
+    in.open(infile, ios::binary);
+    in >> image;
+    in.close();
 
-        // Opening the file for reading in, using infile as the name of the bitmap file
-        // and "ios::binary" means reading in the raw data - binary. This will transfer
-        // bitmap from the object in to bitmap image.
-        in.open(infile, ios::binary);
-        in >> image;
-        in.close();
+    cout << "Seed Image Loaded..." << endl;
 
-        cout << "Seed Image Loaded..." << endl;
+    // Getting width and height from the bitmap since it is stored in the bitmap file. 
+    // getSize is just a public function. These values are required for making the 
+    // gif writer object.
+    int width = image.getSize(1);
+    int height = image.getSize(0);
+    int delay = 10;
+    GifWriter gifw;
 
-        // Getting width and height from the bitmap since it is stored in the bitmap file. 
-        // getSize is just a public function. These values are required for making the 
-        // gif writer object.
-        int width = image.getSize(1);
-        int height = image.getSize(0);
-        int delay = 10;
-        GifWriter gifw;
+    cout << "Gif Writer Created..." << endl;
 
-        cout << "Gif Writer Created..." << endl;
+    GifBegin(&gifw, outfile.c_str(), width, height, delay);
 
+    Render r;
+    vector<int> layers;
 
+#define RED 2
+#define BLUE 3
+#define GREEN 4
+#define PURPLE 5
 
-// Checking if smol was used when compiling.
-#ifdef SMOL
-        GifBegin(&gifw, outfile.c_str(), width * 4, height * 4, delay);
-
-// If it wasn't then do this else statement.
-#else
-        GifBegin(&gifw, outfile.c_str(), width, height, delay);
-
-#endif 
-
-
-
-        cout << "Gif Writer Initialized..." << endl;
-
-
-        // SETTING UP THE EVENTS TO PLAY
-        // This is the vector of different types of events
-        vector<Event*> events;
+    vector< vector< vector <int> > > rules;
         
-        // uint8_t is the data value that the gifwriter takes. 
-        vector<uint8_t> frame;
+        vector<int> rule1_in = {RED};
+        vector<int> rule1_out = {RED, GREEN};
 
-        // How long to run the gifwriter for
-        int max_frame = 500;
+        vector< vector <int> > rule1;
+        rule1.push_back(rule1_in);
+        rule1.push_back(rule1_out);
+        rules.push_back(rule1);
 
-        // How to define the cellular automata
-        int* args;
+        vector<int> rule2_in = {BLUE, RED};
+        vector<int> rule2_out = {RED, RED};
 
-        //Automata Filter
-        // this is a 3 state cellular automata
-        events.push_back(new Filter(0, 500, 2, NULL, NULL));
+        vector< vector <int> > rule2;
+        rule2.push_back(rule2_in);
+        rule2.push_back(rule2_out);
+        rules.push_back(rule2);
 
-        /*
-            args = new int[5];
-            args[0] = 2;
-            args[1] = 3;
-            args[2] = 3;
-            args[3] = 3;
-            args[4] = 1;
-        events.push_back(new Filter(0, 100, 1, args, NULL));
+        vector<int> rule3_in = {BLUE, RED, RED};
+        vector<int> rule3_out = {RED, BLUE};
 
-            args = new int[5];
-            args[0] = 2;
-            args[1] = 3;
-            args[2] = 3;
-            args[3] = 4;
-            args[4] = 1;
-        events.push_back(new Filter(100, 100, 1, args, NULL));
+        vector< vector <int> > rule3;
+        rule3.push_back(rule3_in);
+        rule3.push_back(rule3_out);
+        rules.push_back(rule3);
 
-            args = new int[5];
-            args[0] = 1;
-            args[1] = 5;
-            args[2] = 2;
-            args[3] = 2;
-            args[4] = 4;
-        events.push_back(new Filter(200, 100, 1, args, NULL));
+        vector<int> rule4_in = {GREEN, RED};
+        vector<int> rule4_out = {GREEN};
 
-            args = new int[5];
-            args[0] = 0;
-            args[1] = 0;
-            args[2] = 1;
-            args[3] = 1;
-            args[4] = 1;
-        events.push_back(new Filter(300, 100, 1, args, NULL));
-        */
+        vector< vector <int> > rule4;
+        rule4.push_back(rule4_in);
+        rule4.push_back(rule4_out);
+        rules.push_back(rule4);
 
-        // ACTUAL WRITING TO THE IMAGE 
-        for (int n = 0; n < max_frame; n++)
-        {
-            // Go through all of the events in the events vector and activate all of them.
-            for (auto e : events) e -> Activate(image, n); // This is fancy syntax for vectors to loop through the data structure.
+        vector<int> rule5_in = {GREEN, BLUE};
+        vector<int> rule5_out = {RED, GREEN};
 
-            // Translate the bitmap image into the vector of frame data.
-            getFrame(frame, image);
+        vector< vector <int> > rule5;
+        rule5.push_back(rule5_in);
+        rule5.push_back(rule5_out);
+        rules.push_back(rule5);
 
-// Another if for if the smol yes.
-#ifdef SMOL
-            GifWriteFrame(&gifw, frame.data(), width * 4, height * 4, delay);
-#else
-            GifWriteFrame(&gifw, frame.data(), width, height, delay);
-#endif
+        vector<int> rule6_in = {GREEN, GREEN};
+        vector<int> rule6_out = {BLUE, BLUE, PURPLE};
 
-            cout << "   Frame " << n << " Written" << endl;
-        }
+        vector< vector <int> > rule6;
+        rule6.push_back(rule6_in);
+        rule6.push_back(rule6_out);
+        rules.push_back(rule6);
 
-       GifEnd(&gifw);
+        vector<int> rule7_in = {PURPLE, RED};
+        vector<int> rule7_out = {RED, PURPLE};
 
-       cout << "...Gif Written" << endl; 
+        vector< vector <int> > rule7;
+        rule7.push_back(rule7_in);
+        rule7.push_back(rule7_out);
+        rules.push_back(rule7);
 
-       for (auto e : events) delete e;
+        vector<int> rule8_in = {PURPLE, BLUE};
+        vector<int> rule8_out = {BLUE, PURPLE};
 
-    }
-    catch(BADHEADER)
+        vector< vector <int> > rule8;
+        rule8.push_back(rule8_in);
+        rule8.push_back(rule8_out);
+        rules.push_back(rule8);
+
+        vector<int> rule9_in = {PURPLE, GREEN};
+        vector<int> rule9_out = {GREEN, PURPLE};
+
+        vector< vector <int> > rule9;
+        rule9.push_back(rule9_in);
+        rule9.push_back(rule9_out);
+        rules.push_back(rule9);
+
+        vector<int> ruleA_in = {PURPLE, PURPLE};
+        vector<int> ruleA_out = {RED};
+
+        vector< vector <int> > ruleA;
+        ruleA.push_back(ruleA_in);
+        ruleA.push_back(ruleA_out);
+        rules.push_back(ruleA);
+
+        vector<int> first = {RED};
+
+        //rewrite event
+        layers.push_back(r.Add_Layer(&image, new Rewrite(0, 300, width, height, 5, rules, first)));
+        r.layer_SetMask(layers[0], 215);
+
+
+    for (int i = 0; i < 10; i++)
     {
-	cout << "Error: file not recognized." << endl;
+        layers.push_back(r.Add_Layer(&image, new Fractal(i * 25, 75, width, height, i)));
+        r.layer_SetMask(layers[i], 128);
     }
-    catch(...)
-    {
-        cout << "Error: an uncaught exception occured." << endl;
-    }
+
+    r.Export(gifw);
+
+    GifEnd(&gifw);
+
+    cout << "...Gif Written" << endl; 
 
     return 0;
 }
