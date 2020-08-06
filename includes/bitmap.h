@@ -206,24 +206,6 @@ void getFrame(vector<uint8_t>& frame, Bitmap& b)
 {
 	frame.clear();
 
-#ifdef SMOL
-	for (int i = 0; i < b.getSize(0); i++) 
-	{
-		for (int l1 = 0; l1 < 4; l1++)
-		{
-			for (int j = 0; j < b.getSize(1); j++)
-			{
-				for (int l2 = 0; l2 < 4; l2++)
-				{
-					int* rgb = b.getPixel(i, j).getRGB();
-
-					for (int k = 0; k < 4; k++)
-						frame.push_back((uint8_t) rgb[k]);
-				}
-			}		
-		}
-	}
-#else
 	for (int i = 0; i < b.getSize(0); i++) 
 	{
 		for (int j = 0; j < b.getSize(1); j++)
@@ -234,9 +216,7 @@ void getFrame(vector<uint8_t>& frame, Bitmap& b)
 				frame.push_back((uint8_t) rgb[k]);
 		}		
 	}
-#endif
 }
-
 
 //Translates mask to an integer value corresponding to the "turned on" byte
 //	MASK MUST BE OF TYPE ONE-HOT
@@ -347,11 +327,11 @@ istream& operator>>(istream& in, Bitmap& b)
 	}
 
 //Store header
-	int length = in.tellg();		//store position in input stream as 'length'	
-	char header[length];  			//create header int of size 'length'
-	in.seekg(0, in.beg);			//retrace steps through input stream
-	in.read(header, length);		//read in data to 'length'
-	b.setHeader(header, length);	//store header in object of class Bitmap
+	int length = in.tellg();					//store position in input stream as 'length'	
+	char* header = new char[length];  			//create header int of size 'length'
+	in.seekg(0, in.beg);						//retrace steps through input stream
+	in.read(header, length);					//read in data to 'length'
+	b.setHeader(header, length);				//store header in object of class Bitmap
 
 	cout << "	istream Header Saved..." << endl;
 
