@@ -7,15 +7,18 @@
 
 #include <vector>
 
+#include "frame.h"
+
 #ifndef LAYER_H
 #define LAYER_H
 
 class Layer {
 
     public:
-        Layer(int start, int frame_num, int width, int height)
-            : _start(start), _frame_num(frame_num), _end(start + frame_num), _width(width), _height(height) 
-            {}
+        Layer(int start, int frame_num, int width, int height) 
+            : _start(start), _frame_num(frame_num), _end(start + frame_num), _width(width), _height(height) {}
+
+        ~Layer() {for (auto f : _frames) delete f;}
 
         Layer(Layer* l1, Layer* l2, int op)
         {
@@ -40,7 +43,7 @@ class Layer {
             //compose frame data together
             for (int i = 0; i < _frame_num; i++)
             {
-                std::vector<uint8_t> frame;
+                std::vector<uint8_t> frame_data;
 
                 //Check if first layer is active
                 if ((i >= (l1->_start - _start)) && (i < (l1->_end - _start)))
@@ -59,35 +62,35 @@ class Layer {
 
                     if (l1_active && l2_active)
                     {
-                        r1 = l1->_frame_data[i - l1->_start + _start][j + 0];
-                        r2 = l2->_frame_data[i - l2->_start + _start][j + 0];
-                        g1 = l1->_frame_data[i - l1->_start + _start][j + 1];
-                        g2 = l2->_frame_data[i - l2->_start + _start][j + 1];
-                        b1 = l1->_frame_data[i - l1->_start + _start][j + 2];
-                        b2 = l2->_frame_data[i - l2->_start + _start][j + 2];
-                        a1 = l1->_frame_data[i - l1->_start + _start][j + 3];
-                        a2 = l2->_frame_data[i - l2->_start + _start][j + 3];
+                        r1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 0];
+                        r2 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 0];
+                        g1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 1];
+                        g2 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 1];
+                        b1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 2];
+                        b2 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 2];
+                        a1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 3];
+                        a2 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 3];
                     }
                     if (l1_active && !l2_active)
                     {
-                        r1 = l1->_frame_data[i - l1->_start + _start][j + 0];
+                        r1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 0];
                         r2 = 0;
-                        g1 = l1->_frame_data[i - l1->_start + _start][j + 1];
+                        g1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 1];
                         g2 = 0;
-                        b1 = l1->_frame_data[i - l1->_start + _start][j + 2];
+                        b1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 2];
                         b2 = 0;
-                        a1 = l1->_frame_data[i - l1->_start + _start][j + 3];
+                        a1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 3];
                         a2 = 0;
                     }
                     if (!l1_active && l2_active)
                     {
-                        r1 = l2->_frame_data[i - l2->_start + _start][j + 0];
+                        r1 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 0];
                         r2 = 0;
-                        g1 = l2->_frame_data[i - l2->_start + _start][j + 1];
+                        g1 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 1];
                         g2 = 0;
-                        b1 = l2->_frame_data[i - l2->_start + _start][j + 2];
+                        b1 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 2];
                         b2 = 0;
-                        a1 = l2->_frame_data[i - l2->_start + _start][j + 3];
+                        a1 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 3];
                         a2 = 0;
                     }
                     if (!l1_active && !l2_active)
@@ -104,13 +107,13 @@ class Layer {
 
                     ao = a1 + (int) (a2 * ((float)(255 - a1) / 255));
 
-                    frame.push_back((ao != 0) ? (uint8_t)((r1*a1 + r2*a2*((float)(255 - a1) / 255)) / ao) : 0);
-                    frame.push_back((ao != 0) ? (uint8_t)((g1*a1 + g2*a2*((float)(255 - a1) / 255)) / ao) : 0);
-                    frame.push_back((ao != 0) ? (uint8_t)((b1*a1 + b2*a2*((float)(255 - a1) / 255)) / ao) : 0);
-                    frame.push_back((uint8_t)ao);
+                    frame_data.push_back((ao != 0) ? (uint8_t)((r1*a1 + r2*a2*((float)(255 - a1) / 255)) / ao) : 0);
+                    frame_data.push_back((ao != 0) ? (uint8_t)((g1*a1 + g2*a2*((float)(255 - a1) / 255)) / ao) : 0);
+                    frame_data.push_back((ao != 0) ? (uint8_t)((b1*a1 + b2*a2*((float)(255 - a1) / 255)) / ao) : 0);
+                    frame_data.push_back((uint8_t)ao);
                 }
 
-                _frame_data.push_back(frame);
+                _frames.push_back(new Frame(frame_data, _width, _height));
 
                 if (l1_active && l2_active)
                     cout << "   Frame " << i << " Composited, with l1 & l2" << endl;
@@ -123,42 +126,22 @@ class Layer {
             }
         }
 
-        int* get_pixel(int frame, int* pos);
-        void set_pixel(int frame, int* pos, int* val);
-
         void set_mask(int val);
-        void mask_inactive();
 
         int _start;
         int _frame_num;
         int _end;
         int _width;
         int _height;
-
-        std::vector<std::vector<uint8_t>> _frame_data;
+        
+        vector<Frame*> _frames;
 };
-
-int* Layer::get_pixel(int frame, int* pos)
-{
-    int* val = new int[4];
-
-    for (int i = 0; i < 4; i++)
-        val[i] = (int)_frame_data[frame][(pos[0] * _width * 4) + pos[1] * 4 + i];
-
-    return val;
-}
-
-void Layer::set_pixel(int frame, int* pos, int* val)
-{
-    for (int i = 0; i < 4; i++)
-        _frame_data[frame][(pos[0] * _width * 4) + pos[1] * 4 + i] = (uint8_t)val[i];
-}
 
 void Layer::set_mask(int val)
 {
     for (int i = 0; i < _frame_num; i++)
         for (int j = 0; j < _width * _height * 4; j = j + 4)
-            _frame_data[i][j + 3] = (uint8_t)val;
+            _frames[i]->_frame_data[j + 3] = (uint8_t)val;
 }
 
 #endif

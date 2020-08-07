@@ -1,5 +1,5 @@
-#include "bitmap.h"
 #include "layer.h"
+#include "frame.h"
 #include <vector>
 #include <algorithm>
 
@@ -11,7 +11,7 @@ class Event {
 		Event(int start, int duration, int width, int height) 
 			: _start(start), _duration(duration), _width(width), _height(height) {}
 
-		virtual void Activate(Bitmap* b, Layer* l) = 0;
+		virtual void Activate(Frame* f, Layer* l) = 0;
 
 		int _start;
 		int _duration;

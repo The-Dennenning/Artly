@@ -19,11 +19,11 @@
 **          It is in this way that output from two different events can be
 **          superimposed in various ways.
 **
-**/
+*/
 
 #include "events.h"
-#include "bitmap.h"
 #include "layer.h"
+#include "frame.h"
 #include "gif.h"
 
 #ifndef RENDER_H
@@ -32,21 +32,23 @@
 class Render {
 
     public:
+        Render() {}
+        ~Render() {}
 
         //Generates layer
-        //  using seed bitmap and event
-        int Add_Layer(Bitmap* b, Event* e)
+        //  using seed frame and event
+        int Add_Layer(Frame* f, Event* e)
         {
             //Create layer 
             //  at start of event, and for duration of event,
-            //  with width and height of provided bitmap
-            Layer* l = new Layer(e->_start, e->_duration, b->getSize(0), b->getSize(1));
+            //  with width and height of provided frame
+            Layer* l = new Layer(e->_start, e->_duration, e->_width, e->_height);
 
             cout << "Layer created, with start " << e->_start << " and duration " << e->_duration << endl;
 
             //Activates event
-            //  using seed bitmap b to generate frame data in layer l
-            e->Activate(b, l);
+            //  using seed frame f to generate frame data in layer l
+            e->Activate(f, l);
 
             //Stores new layer
             //  in vector _layers,
@@ -107,7 +109,7 @@ class Render {
 
             for (int i = 0; i < l->_frame_num; i++)
             {
-                GifWriteFrame(&gifw, l->_frame_data[i].data(), l->_width, l->_height, 10);
+                GifWriteFrame(&gifw, flip(l->_frames[i]).data(), l->_width, l->_height, 10);
 
                 cout << "   Frame " << i << " Written" << endl;
             }
@@ -116,6 +118,24 @@ class Render {
         void layer_SetMask(int layer_id, int val)
         {
             _layers[layer_id]->set_mask(val);
+        }
+
+        vector<uint8_t> flip(Frame* f)
+        {
+            vector<uint8_t> flip;
+
+            for (int j = 0; j < f->_height; j++)
+            {
+                for (int i = 0; i < f->_width; i++)
+                {
+                    for (int k = 0; k < 4; k++)
+                    {
+                        flip.push_back(f->_frame_data[i * f->_height * 4 + (j * 4) + k]);
+                    }
+                }
+            }
+
+            return flip;
         }
 
     private:
