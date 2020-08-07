@@ -16,24 +16,36 @@ class Fractal : public Event
 
 		int _scaleFactor;
 
-		void Activate(Bitmap* b, Layer* l);
+		void Activate(Frame* f, Layer* l);
 		int* getColor(int i, int j, int n);
 		int evalFractal(float re, float im, int n);
 };
 
-void Fractal::Activate(Bitmap* b, Layer* l)
+void Fractal::Activate(Frame* f, Layer* l)
 {
 	vector<uint8_t> frame;
-
+	
 	for (int n = 0; n < l->_frame_num; n++)
 	{
-		for (int i = 0; i < _width; i++)
-			for (int j = 0; j < _height; j++)
-				b -> getPixel(i, j).setRGB(getColor(i, j, n));
+		frame.clear();
 
-		getFrame(frame, *b);
-		l->_frame_data.push_back(frame);
-		cout << "	Fractal Frame " << n << " Generated" << endl; 
+		for (int i = 0; i < _width; i++)
+		{
+			for (int j = 0; j < _height; j++)
+			{
+				int* rgb = getColor(i, j, n);
+
+				for (int k = 0; k < 3; k++)
+					frame.push_back((uint8_t)rgb[k]);
+
+				frame.push_back((uint8_t)255);
+			}
+		}
+		
+		l->_frames.push_back(new Frame(frame, _width, _height));
+
+		if (n % 10 == 0)
+			cout << "	Fractal Frame " << n << " Generated" << endl; 
 	}
 }
 
@@ -120,8 +132,8 @@ int* Fractal::getColor(int i, int j, int n)
 	}
 	else if (_scaleFactor % 6 == 3)
 	{
-		re = ((float) i / _width) * 1 - 1;
-		im = ((float) j / _height) * .75 - 75;
+		re = ((float) i / _width) * 1 + 1;
+		im = ((float) j / _height) * .75 + 75;
 	}
 	else if (_scaleFactor % 6 == 5)
 	{
