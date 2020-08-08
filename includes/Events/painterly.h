@@ -1,10 +1,14 @@
-#include "./events.h"
+#include "..\events.h"
+
+#include <algorithm>
+
+using namespace std;
 
 
 class Stroke { // Data structure for holding painterly strokes.
 
 	public:
-		Stroke::Stroke(int iradius, int ix, int iy, int ir, int ig, int ib, int ia) 
+		Stroke(int iradius, int ix, int iy, int ir, int ig, int ib, int ia) 
 			: radius(iradius),x(ix),y(iy),r(ir),g(ig),b(ib),a(ia) {}
    
    // data
@@ -16,31 +20,38 @@ class Painter : public Event
 {
 	public:
 		Painter();
-		Painter(int start, int duration, Bitmap *b, Bitmap *r, int firstLayer, int *strokeNum, int strokeMax, int radius) 
-			: Event(start, duration), _r(r), _firstLayer(firstLayer), _strokeMax(strokeMax), _radius(radius), _width(b->getSize(0)), _height(b->getSize(1)) 
+		Painter(int start, int duration, Frame *feedthru, Frame *reference, int strokePer, int radius) 
+			: Event(start, duration, feedthru->_width, feedthru->_height), 
+			_feedthru(feedthru), _reference(reference), _firstLayer(0), _strokePer(strokePer), _strokeMax(strokePer * start), _radius(radius)
 		{
 			cout << "	Generating Reference..." << endl;
 			Generate_Reference();
 			cout << "	Generating Layer..." << endl;
-			Generate_Layer(b);
-
-			*strokeNum = _strokeNum / 20;
-			_duration = _strokeNum / 20;
+			Generate_Layer();
+			cout << "Painterly created, with start " << start << " and duration " << duration << endl;
 		}
 
 		~Painter();
 		
-		void Activate(Bitmap *b, int frame_num);
+		void Activate(Frame *f, Layer *l);
 
 	private:
 		int _firstLayer;
 		int _strokeNum;
+		int _strokePer;
 		int _strokeMax;
 		int _radius;
-		int _width;
-		int _height;
 
-		Bitmap* _r;
+		//Reference Bitmap
+		//	blurred for use in stroke generation
+		Frame* _reference;
+
+		//Reference Bitmap
+		//	blurred for use in stroke generation
+		Frame* _feedthru;
+
+		//Stroke Data Structure
+		//	Holds randomized list of paint strokes
 		vector<Stroke*> _s;
 
 		//Generates reference image
@@ -48,20 +59,29 @@ class Painter : public Event
 		void Generate_Reference();
 
 		//Generates layer of strokes
-		void Generate_Layer(Bitmap *b);
+		void Generate_Layer();
 
 		//Paints a single stroke from layer
-		void Paint_Stroke(Bitmap *b, const Stroke& s);
+		void Paint_Stroke(Frame *f, const Stroke& s);
 };
 
-
-void Painter::Activate(Bitmap* b, int frame_num)
+//This outputs the painted-on frame
+void Painter::Activate(Frame* f, Layer* l)
 {
-	if (frame_num < _start || frame_num >= _start + _duration)
-		return;
+	for (int n = 0; n < l->_frame_num; n++)
+	{
+		l->_frames.push_back(new Frame(*f));
+		f = l->_frames[n];
 
-	for (int i = 0; i < 20; i++)
-		Paint_Stroke(b, *_s[(frame_num - _start) * 20 + i]);
+		for (int i = 0; i < _strokePer; i++)
+		{
+			if (n * _strokePer + i < _s.size()) {
+				Paint_Stroke(f, *_s[n * _strokePer + i]);
+			}
+		}
+
+		cout << "	Painterly Frame " << n << " Generated" << endl; 
+	}
 }
 
 
@@ -119,7 +139,8 @@ void Painter::Generate_Reference()
 						if (j + g_j >= 0 && j + g_j < _height)
 						{
 							//Gets pixel value at specified pixel
-							int* rgb = _r->getPixel(i + g_i, j + g_j).getRGB();
+							int rgb[] = {0, 0, 0, 0};
+							_reference->get(i + g_i, j + g_j, rgb);
 
 							//Multiplies two 1-D gaussian filter terms together
 							//	Simulating 2-D gaussian filter
@@ -147,8 +168,7 @@ void Painter::Generate_Reference()
 	{
 		for (int j = 0; j < _height; j++)
 		{
-			for (int k = 0; k < 3; k++)
-				_r->getPixel(i, j).getRGB()[k] = temp[i][j][k];
+			_reference->set(i, j, temp[i][j]);
 
 			delete[] temp[i][j];
 		}
@@ -164,7 +184,7 @@ void Painter::Generate_Reference()
 //			Applies paint strokes to canvas
 //		
 ///////////////////////////////////////////////////////////////////////////////
-void Painter::Generate_Layer(Bitmap* _b)
+void Painter::Generate_Layer()
 {
 	//Create new set of strokes
 	_strokeNum = 0;
@@ -189,8 +209,11 @@ void Painter::Generate_Layer(Bitmap* _b)
 				//Calculates difference image given initailized canvas
 				double sum = 0;
 
-				int* rgb_r = _r->getPixel(i, j).getRGB();
-				int* rgb_o = _b->getPixel(i, j).getRGB();
+				int rgb_r[] = {0, 0, 0, 0};
+				int rgb_o[] = {0, 0, 0, 0};
+				
+				_reference->get(i, j, rgb_r);
+				_feedthru->get(i, j, rgb_o);
 
 				for (int k = 0; k < 3; k++)
 					sum += (rgb_r[k] - rgb_o[k]) * (rgb_r[k] - rgb_o[k]);
@@ -251,26 +274,28 @@ void Painter::Generate_Layer(Bitmap* _b)
 			if (areaError > T) {
 
 				//Get Pixel rgb value
-				int* rgb = _r->getPixel(max_i, max_j).getRGB();
+				int rgb[] = {0, 0, 0, 0};
+
+				_reference->get(max_i, max_j, rgb);
 
 				//cout << rgb[0] << ", " << rgb[1] << ", " << rgb[2] << endl;
 
 				//Make Stroke unsigned int iradius, unsigned int ix, unsigned int iy, unsigned char ir, unsigned char ig, unsigned char ib, unsigned char ia
-				_s.push_back(new Stroke(_radius, max_j, max_i, rgb[2], rgb[1], rgb[0], 255));
+				_s.push_back(new Stroke(_radius, max_j, max_i, rgb[0], rgb[1], rgb[2], 255));
 
 				_strokeNum++;
 			}
 		}
 	}
-
+	
 	//Shuffle, for natural look
-	std::random_shuffle(_s.begin(), _s.end());
+	random_shuffle(_s.begin(), _s.end());
 
 	//Limit number of strokes layer can have
 	if (_strokeNum > _strokeMax) _strokeNum = _strokeMax;
 }
 
-void Painter::Paint_Stroke(Bitmap* _b, const Stroke& s) {
+void Painter::Paint_Stroke(Frame* f, const Stroke& s) {
    int radius_squared = s.radius * s.radius;
    for (int x_off = -(s.radius); x_off <= s.radius; x_off++) {
       for (int y_off = -(s.radius); y_off <= s.radius; y_off++) {
@@ -280,26 +305,25 @@ void Painter::Paint_Stroke(Bitmap* _b, const Stroke& s) {
          if ((x_loc >= 0 && x_loc < _height && y_loc >= 0 && y_loc < _width)) {
             int dist_squared = x_off * x_off + y_off * y_off;
             if (dist_squared <= radius_squared) {
-				/*
-               _b->getPixel(y_loc, x_loc).getRGB()[0] = 
-                  (_b->getPixel(y_loc, x_loc).getRGB()[0] + s.r) / 2;
-               _b->getPixel(y_loc, x_loc).getRGB()[1] = 
-                  (_b->getPixel(y_loc, x_loc).getRGB()[1] + s.g) / 2;
-               _b->getPixel(y_loc, x_loc).getRGB()[2] = 
-                  (_b->getPixel(y_loc, x_loc).getRGB()[2] + s.b) / 2;
-				*/
+
+				int rgb[] = {0, 0, 0, 255};
+				rgb[0] = s.r;
+				rgb[1] = s.g;
+				rgb[2] = s.b;
 				
-               _b->getPixel(y_loc, x_loc).getRGB()[0] = s.r;
-               _b->getPixel(y_loc, x_loc).getRGB()[1] = s.g;
-               _b->getPixel(y_loc, x_loc).getRGB()[2] = s.b;
+               f->set(y_loc, x_loc, rgb);
 			   
             } else if (dist_squared >= radius_squared + 1 && dist_squared <= radius_squared + 2) {
-               _b->getPixel(y_loc, x_loc).getRGB()[0] = 
-                  (_b->getPixel(y_loc, x_loc).getRGB()[0] + s.r) / 2;
-               _b->getPixel(y_loc, x_loc).getRGB()[1] = 
-                  (_b->getPixel(y_loc, x_loc).getRGB()[1] + s.g) / 2;
-               _b->getPixel(y_loc, x_loc).getRGB()[2] = 
-                  (_b->getPixel(y_loc, x_loc).getRGB()[2] + s.b) / 2;
+
+				int rgb[] = {0, 0, 0, 255};
+
+				f->get(y_loc, x_loc, rgb);
+
+				rgb[0] = (int)((float)rgb[0] + s.r) / 2;
+				rgb[1] = (int)((float)rgb[1] + s.g) / 2;
+				rgb[2] = (int)((float)rgb[2] + s.b) / 2;
+				
+               f->set(y_loc, x_loc, rgb);
             }
          }
       }
