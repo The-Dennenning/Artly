@@ -50,6 +50,8 @@ class Render {
             //  using seed frame f to generate frame data in layer l
             e->Activate(f, l);
 
+            delete e;
+
             //Stores new layer
             //  in vector _layers,
             //  with index _layers.size() - 1
@@ -136,6 +138,11 @@ class Render {
             }
 
             return flip;
+        }
+
+        Frame* layer_getLastFrame()
+        {
+            return _layers.back()->_frames.back();
         }
 
     private:

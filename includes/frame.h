@@ -12,7 +12,10 @@ class Frame
 
         Frame(vector<uint8_t> frame_data, int width, int height)
             : _frame_data(frame_data), _width(width), _height(height) {}
-            
+
+        Frame(int width, int height)
+            : _frame_data(width*height*4, 0), _width(width), _height(height) {}
+
         Frame(Bitmap &b)
             : _width(b.getSize(0)), _height(b.getSize(1))
         {
@@ -33,6 +36,8 @@ class Frame
             {
                 for (int j = 0; j < _height; j++)
                 {
+                    //Color is flipped around on purpose
+                    //  to account for bug in bitmap reading library
                     _frame_data.push_back(temp_data[j * _width * 4 + i * 4 + 2]);
                     _frame_data.push_back(temp_data[j * _width * 4 + i * 4 + 1]);
                     _frame_data.push_back(temp_data[j * _width * 4 + i * 4 + 0]);
@@ -42,6 +47,22 @@ class Frame
 
         }
         ~Frame() {}
+
+        void get(int i, int j, int* rgba)
+        {
+            rgba[0] = _frame_data[i * _height * 4 + j * 4 + 0];
+            rgba[1] = _frame_data[i * _height * 4 + j * 4 + 1];
+            rgba[2] = _frame_data[i * _height * 4 + j * 4 + 2];
+            rgba[3] = _frame_data[i * _height * 4 + j * 4 + 3];
+        }
+
+        void set(int i, int j, int* rgba)
+        {
+            _frame_data[i * _height * 4 + j * 4 + 0] = (uint8_t)rgba[0];
+            _frame_data[i * _height * 4 + j * 4 + 1] = (uint8_t)rgba[1];
+            _frame_data[i * _height * 4 + j * 4 + 2] = (uint8_t)rgba[2];
+            _frame_data[i * _height * 4 + j * 4 + 3] = (uint8_t)rgba[3];
+        }
 
         //Stores pixel RGBA data as array
         //  indexed by [i * _height + j]

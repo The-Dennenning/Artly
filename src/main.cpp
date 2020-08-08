@@ -10,6 +10,7 @@
 
 #include "..\includes\Events\fractal.h"
 #include "..\includes\Events\plotter.h"
+#include "..\includes\Events\painterly.h"
 
 #define RED 2
 #define BLUE 3
@@ -35,9 +36,9 @@ void Run()
     ifstream in;
     Bitmap image;
 
-    string infile("mountain1.bmp");
+    string infile("dog.bmp");
  
-    string outfile("Out.gif");
+    string outfile("dog.gif");
 
     cout << "Seed Image Loading..." << endl;
 
@@ -63,35 +64,48 @@ void Run()
     vector<int> layers;
     Render r;
 
-/*
-        Bitmap* br = new Bitmap(image);
-        Bitmap* bo = new Bitmap(image);
+    Frame* reference = new Frame(*f);
+    Frame* output = new Frame(width, height);
 
-        int clear[3] = {255, 255, 255};
-        bo->clear(clear);
-        cout << "Reference and Output Images Intialized..." << endl << endl;
-        
-        delete br;
-        br = new Bitmap(image);
-        layers.push_back(r.Add_Layer(bo, new Painter(0, 150, bo, br, 0, 2000, 10)));
-        r.layer_SetMask(layers[0], 255);
+    cout << "Reference and Output Images Intialized..." << endl << endl;
+    
+    layers.push_back(r.Add_Layer(output, new Painter(0, 50, output, reference, 100, 15)));
 
+    delete reference;
+    reference = new Frame(*f);
+    delete output;
+    output = new Frame(*r.layer_getLastFrame());
 
-        delete br;
-        br = new Bitmap(image);
-        layers.push_back(r.Add_Layer(bo, new Painter(0, 150, bo, br, 0, 2000, 7)));
-        r.layer_SetMask(layers[1], 255);
-*/
+    layers.push_back(r.Add_Layer(output, new Painter(50, 50, output, reference, 100, 7)));
+
+    delete reference;
+    reference = new Frame(*f);
+    delete output;
+    output = new Frame(*r.layer_getLastFrame());
+
+    layers.push_back(r.Add_Layer(output, new Painter(100, 50, output, reference, 125, 3)));
+
+    delete reference;
+    reference = new Frame(*f);
+    delete output;
+    output = new Frame(*r.layer_getLastFrame());
+
+    layers.push_back(r.Add_Layer(output, new Painter(150, 50, output, reference, 150, 1)));
+
+    layers.push_back(r.Add_Layer(new Frame(*r.layer_getLastFrame()), new Plotter(200, 100, width, height)));
+
+    delete output;
+    delete reference;
+    delete f;
 
 /*
     for (int i = 0; i < 10; i++)
     {
-        layers.push_back(r.Add_Layer(NULL, new Fractal(i * 15, 45, width, height, i * 5)));
-        r.layer_SetMask(layers[i], 128);
+        layers.push_back(r.Add_Layer(NULL, new Fractal(i * 30, 30, width, height, i * 5)));
+        r.layer_SetMask(layers[i + 4], i * 20);
     }
 */
-    r.Add_Layer(f, new Plotter(0, 50, width, height));
-    
+
     r.Export(gifw);
 
     GifEnd(&gifw);
