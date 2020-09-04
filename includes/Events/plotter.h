@@ -53,9 +53,11 @@ void Plotter::Activate(Frame* f, Layer* l)
         l->_frames.push_back(new Frame(frame, l->_width, l->_height));
     }
     */
+    //Plots frame as passed
 
     for (int n = 0; n < l->_frame_num; n++)
     {
         l->_frames.push_back(new Frame(*f));
+        cout << "   Plotter Frame " << n << " Generated" << endl;
     }
 }

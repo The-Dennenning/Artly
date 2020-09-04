@@ -9,6 +9,24 @@ class Frame
         Frame();
         Frame(const Frame &f) 
             : _frame_data(f._frame_data), _meta_data(f._meta_data), _width(f._width), _height(f._height) {}
+            
+        /*
+        Frame(const Frame &f1, const frame &f2) 
+            : _width(f1._width), _height(f1._height) 
+            {
+                for (int i = 0; i < _width * _height * 4)
+                {
+                    
+                    ao = a1 + (int) (a2 * ((float)(255 - a1) / 255));
+
+                    frame_data.push_back((ao != 0) ? (uint8_t)((r1*a1 + r2*a2*((float)(255 - a1) / 255)) / ao) : 0);
+                    frame_data.push_back((ao != 0) ? (uint8_t)((g1*a1 + g2*a2*((float)(255 - a1) / 255)) / ao) : 0);
+                    frame_data.push_back((ao != 0) ? (uint8_t)((b1*a1 + b2*a2*((float)(255 - a1) / 255)) / ao) : 0);
+                    frame_data.push_back((uint8_t)ao);
+                }
+                _frame_data()
+            }
+        */
 
         Frame(vector<uint8_t> frame_data, int width, int height)
             : _frame_data(frame_data), _width(width), _height(height) {}

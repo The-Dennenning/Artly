@@ -1,6 +1,6 @@
 #include <iostream>
 #include <fstream>
-#include <string.h>
+#include <string>
 #include <time.h>
 
 #include "..\includes\render.h"
@@ -33,83 +33,119 @@ int main(int argc, char** argv)
 
 void Run() 
 {
+    cout << "Initializing Gif..." << endl;
+
     ifstream in;
-    Bitmap image;
 
-    string infile("dog.bmp");
+    vector <Frame*> inits;
  
-    string outfile("dog.gif");
+    string outfile("output/v6.gif");
 
-    cout << "Seed Image Loading..." << endl;
+    for (int i = 1; i <= 13; i++)
+    {
+        string file_name("input/bmp" + to_string(i) + ".bmp");
 
-    in.open(infile, ios::binary);
-    in >> image;
-    in.close();
+        Bitmap* image = new Bitmap();
 
-    cout << "Seed Image Loaded..." << endl;
+        in.open(file_name, ios::binary);
+        in >> *image;
+        in.close();
 
-    int width = image.getSize(0);
-    int height = image.getSize(1);
+        inits.push_back(new Frame(*image));
+
+        delete image;
+    }
+
+#ifdef DEBUG
+    cout << "Seed Images Loaded" << endl;
+#endif
+
+    int width = inits[0]->_width;
+    int height = inits[0]->_height;
     int delay = 10;
-
-    Frame* f = new Frame(image);
-
-    cout << "Seed Frame Created..." << endl;
 
     GifWriter gifw;
     GifBegin(&gifw, outfile.c_str(), width, height, delay);
 
+#ifdef DEBUG
     cout << "Gif Writer Created..." << endl;
+#endif
 
+    vector<int> temp_layers;
     vector<int> layers;
     Render r;
 
-    Frame* reference = new Frame(*f);
+    cout << "Scripting Gif..." << endl;
+
+    Frame* reference = new Frame(*inits[0]);
     Frame* output = new Frame(width, height);
 
+#ifdef DEBUG
     cout << "Reference and Output Images Intialized..." << endl << endl;
-    
-    layers.push_back(r.Add_Layer(output, new Painter(0, 50, output, reference, 100, 15)));
+#endif
+
+    temp_layers.push_back(r.Add_Layer(output, new Painter(0, 15, output, reference, 400, 15)));
 
     delete reference;
-    reference = new Frame(*f);
-    delete output;
-    output = new Frame(*r.layer_getLastFrame());
+    reference = new Frame(*inits[0]);
 
-    layers.push_back(r.Add_Layer(output, new Painter(50, 50, output, reference, 100, 7)));
+    temp_layers.push_back(r.Add_Layer(output, new Painter(0, 15, output, reference, 300, 7)));
 
     delete reference;
-    reference = new Frame(*f);
-    delete output;
-    output = new Frame(*r.layer_getLastFrame());
+    reference = new Frame(*inits[0]);
 
-    layers.push_back(r.Add_Layer(output, new Painter(100, 50, output, reference, 125, 3)));
+    temp_layers.push_back(r.Add_Layer(output, new Painter(0, 15, output, reference, 300, 3)));
 
     delete reference;
-    reference = new Frame(*f);
-    delete output;
-    output = new Frame(*r.layer_getLastFrame());
+    reference = new Frame(*inits[0]);
 
-    layers.push_back(r.Add_Layer(output, new Painter(150, 50, output, reference, 150, 1)));
+    temp_layers.push_back(r.Add_Layer(output, new Painter(0, 15, output, reference, 300, 1)));
 
-    layers.push_back(r.Add_Layer(new Frame(*r.layer_getLastFrame()), new Plotter(200, 100, width, height)));
+    layers.push_back(r.Composite_Layers(temp_layers));
 
-    delete output;
-    delete reference;
-    delete f;
-
-/*
-    for (int i = 0; i < 10; i++)
+    for (int i = 1; i < 3; i++)
     {
-        layers.push_back(r.Add_Layer(NULL, new Fractal(i * 30, 30, width, height, i * 5)));
-        r.layer_SetMask(layers[i + 4], i * 20);
+        temp_layers.clear();
+`
+        delete reference;
+        reference = new Frame(*inits[i]);
+        delete output;
+        output = new Frame(*r.layer_getLastFrame());
+
+        temp_layers.push_back(r.Add_Layer(output, new Painter(i * 15, 15, output, reference, 500, 7)));
+
+        delete reference;
+        reference = new Frame(*inits[i]);
+
+        temp_layers.push_back(r.Add_Layer(output, new Painter(i * 15, 15, output, reference, 500, 3)));
+
+        delete reference;
+        reference = new Frame(*inits[i]);
+
+        temp_layers.push_back(r.Add_Layer(output, new Painter(i * 15, 15, output, reference, 500, 1)));
+
+        layers.push_back(r.Composite_Layers(temp_layers));
     }
-*/
+
+#ifdef DEBUG
+    cout << "layers contains: ";
+
+    for (auto l : layers) cout << l << ", ";
+
+    cout << endl;
+#endif
+
+    temp_layers.clear();
+
+    delete output;
+    delete reference;
+    for (auto f : inits) delete f;
+
+    cout << "Compositing and Exporting Gif..." << endl;
 
     r.Export(gifw);
 
     GifEnd(&gifw);
 
     cout << "...Gif Written" << endl;
-
 }

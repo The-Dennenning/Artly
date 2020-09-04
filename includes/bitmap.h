@@ -313,11 +313,13 @@ istream& operator>>(istream& in, Bitmap& b)
 
 		b.map.push_back(line);	
 
+		/*
 		//Skip input padding, if applicable
 		if (b.depth == 24) {
 			for (int j = 0; j < (b.size[1] % 4); j++)
 				in.ignore();	
 		}
+		*/
 	}
 
 	return in;
@@ -358,7 +360,7 @@ ostream& operator<<(ostream& out, const Bitmap& b) {
 				}
 			}
 		}	
-		
+		/*
 		//Pad output with zeros, if applicable
 		if (b.depth == 24) {
 			int padding = b.size[1] % 4;
@@ -370,6 +372,7 @@ ostream& operator<<(ostream& out, const Bitmap& b) {
 				delete[] binary;
 			}	
 		}
+		*/
 	}
 
 	return out;

@@ -24,11 +24,11 @@ class Painter : public Event
 			: Event(start, duration, feedthru->_width, feedthru->_height), 
 			_feedthru(feedthru), _reference(reference), _firstLayer(0), _strokePer(strokePer), _strokeMax(strokePer * start), _radius(radius)
 		{
-			cout << "	Generating Reference..." << endl;
 			Generate_Reference();
-			cout << "	Generating Layer..." << endl;
 			Generate_Layer();
+#ifdef DEBUG
 			cout << "Painterly created, with start " << start << " and duration " << duration << endl;
+#endif
 		}
 
 		~Painter();
@@ -79,8 +79,9 @@ void Painter::Activate(Frame* f, Layer* l)
 				Paint_Stroke(f, *_s[n * _strokePer + i]);
 			}
 		}
-
+#ifdef DEBUG
 		cout << "	Painterly Frame " << n << " Generated" << endl; 
+#endif
 	}
 }
 
@@ -111,8 +112,6 @@ void Painter::Generate_Reference()
 	//Calculates 1D Gaussian
 	for (int k = 0; k < N; k++)
 		Gaussian[k] = Binomial(N, k);
-
-	cout << "		Initializing Gaussian Blur..." << endl;
 
 	//Loop through image
 	for (int i = 0; i < _width; i++)
@@ -159,8 +158,6 @@ void Painter::Generate_Reference()
 				temp[i][j][k] = (int) (sum[k] / total); //weighted average
 		}
 	}
-
-	cout << "		Setting Image Values..." << endl;
 
 	//Empties and Deletes temporary holding
 	

@@ -16,7 +16,7 @@ class Layer {
 
     public:
         Layer(int start, int frame_num, int width, int height) 
-            : _start(start), _frame_num(frame_num), _end(start + frame_num), _width(width), _height(height) {}
+            : _start(start), _frame_num(frame_num), _end(start + frame_num), _width(width), _height(height), _id(next_id) {next_id++;}
 
         ~Layer() {for (auto f : _frames) delete f;}
 
@@ -28,8 +28,10 @@ class Layer {
             //Declare variables to track active layers
             int l1_active, l2_active;
 
-            cout << "layer 1: " << l1->_start << ", " << l1->_end << endl;
-            cout << "layer 2: " << l2->_start << ", " << l2->_end << endl;
+#ifdef DEBUG
+            cout << "layer " << l1->_id << ": " << l1->_start << ", " << l1->_end << endl;
+            cout << "layer " << l2->_id << ": " << l2->_start << ", " << l2->_end << endl;
+#endif
 
             //determine bounds of new layer given those of composite layers
             _start = (l1->_start < l2->_start) ? l1->_start : l2->_start;
@@ -37,8 +39,12 @@ class Layer {
             _frame_num = _end - _start;
             _width = l1->_width;
             _height = l1->_height;
+            _id = next_id;
+            next_id++;
 
+#ifdef DEBUG
             cout << "Compositing layers, with start " << _start << ", duration " << _frame_num << ", and end " << _end << endl;
+#endif
 
             //compose frame data together
             for (int i = 0; i < _frame_num; i++)
@@ -70,59 +76,49 @@ class Layer {
                         b2 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 2];
                         a1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 3];
                         a2 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 3];
+
+                        ao = a1 + (int) (a2 * ((float)(255 - a1) / 255));
+
+                        frame_data.push_back((ao != 0) ? (uint8_t)((r1*a1 + r2*a2*((float)(255 - a1) / 255)) / ao) : 0);
+                        frame_data.push_back((ao != 0) ? (uint8_t)((g1*a1 + g2*a2*((float)(255 - a1) / 255)) / ao) : 0);
+                        frame_data.push_back((ao != 0) ? (uint8_t)((b1*a1 + b2*a2*((float)(255 - a1) / 255)) / ao) : 0);
+                        frame_data.push_back((uint8_t)ao);
                     }
                     if (l1_active && !l2_active)
                     {
-                        r1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 0];
-                        r2 = 0;
-                        g1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 1];
-                        g2 = 0;
-                        b1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 2];
-                        b2 = 0;
-                        a1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 3];
-                        a2 = 0;
+                        frame_data.push_back(l1->_frames[i - l1->_start + _start]->_frame_data[j + 0]);
+                        frame_data.push_back(l1->_frames[i - l1->_start + _start]->_frame_data[j + 1]);
+                        frame_data.push_back(l1->_frames[i - l1->_start + _start]->_frame_data[j + 2]);
+                        frame_data.push_back(l1->_frames[i - l1->_start + _start]->_frame_data[j + 3]);
                     }
                     if (!l1_active && l2_active)
                     {
-                        r1 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 0];
-                        r2 = 0;
-                        g1 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 1];
-                        g2 = 0;
-                        b1 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 2];
-                        b2 = 0;
-                        a1 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 3];
-                        a2 = 0;
+                        frame_data.push_back(l2->_frames[i - l2->_start + _start]->_frame_data[j + 0]);
+                        frame_data.push_back(l2->_frames[i - l2->_start + _start]->_frame_data[j + 1]);
+                        frame_data.push_back(l2->_frames[i - l2->_start + _start]->_frame_data[j + 2]);
+                        frame_data.push_back(l2->_frames[i - l2->_start + _start]->_frame_data[j + 3]);
                     }
                     if (!l1_active && !l2_active)
                     {
-                        r1 = 0;
-                        r2 = 0;
-                        g1 = 0;
-                        g2 = 0;
-                        b1 = 0;
-                        b2 = 0;
-                        a1 = 0;
-                        a2 = 0;
+                        frame_data.push_back(0);
+                        frame_data.push_back(0);
+                        frame_data.push_back(0);
+                        frame_data.push_back(0);
                     }
-
-                    ao = a1 + (int) (a2 * ((float)(255 - a1) / 255));
-
-                    frame_data.push_back((ao != 0) ? (uint8_t)((r1*a1 + r2*a2*((float)(255 - a1) / 255)) / ao) : 0);
-                    frame_data.push_back((ao != 0) ? (uint8_t)((g1*a1 + g2*a2*((float)(255 - a1) / 255)) / ao) : 0);
-                    frame_data.push_back((ao != 0) ? (uint8_t)((b1*a1 + b2*a2*((float)(255 - a1) / 255)) / ao) : 0);
-                    frame_data.push_back((uint8_t)ao);
                 }
 
                 _frames.push_back(new Frame(frame_data, _width, _height));
 
+#ifdef DEBUG
                 if (l1_active && l2_active)
-                    cout << "   Frame " << i << " Composited, with l1 & l2" << endl;
+                    cout << "   Frame " << i << " Composited, with l" << l1->_id << " & l" << l2->_id << endl;
                 if (!l1_active && l2_active)
-                    cout << "   Frame " << i << " Composited, with l2" << endl;
+                    cout << "   Frame " << i << " Composited, with l" << l2->_id << endl;
                 if (l1_active && !l2_active)
-                    cout << "   Frame " << i << " Composited, with l1" << endl;
+                    cout << "   Frame " << i << " Composited, with l" << l1->_id << endl;
                 if (!l1_active && !l2_active)
                     cout << "   Frame " << i << " Composited, with neither layer" << endl;
+#endif
             }
         }
 
@@ -133,9 +129,14 @@ class Layer {
         int _end;
         int _width;
         int _height;
+
+        int _id;
+        static int next_id;
         
         vector<Frame*> _frames;
 };
+
+int Layer::next_id = 0;
 
 void Layer::set_mask(int val)
 {

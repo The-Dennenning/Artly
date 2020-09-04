@@ -51,7 +51,9 @@ void Rewrite::Activate(Bitmap *b, Layer *l)
 
 		getFrame(frame, *b);
 		l->_frame_data.push_back(frame);
-		cout << "	Rewrite Frame " << n << " Generated" << endl; 
+		
+		if (n % 10 == 0)
+			cout << "	Rewrite Frame " << n << " Generated" << endl; 
 	}
 }
 
