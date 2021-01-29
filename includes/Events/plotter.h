@@ -3,61 +3,102 @@
 class Plotter : public Event
 {
     public:
-        Plotter(int start, int duration, int width, int height) 
-            : Event(start, duration, width, height) {}
+        Plotter(int start, int duration, int width, int height, int op, int p1) 
+            : Event(start, duration, width, height), _op(op), _p1(p1) {}
         ~Plotter() {}
 
 		void Activate(Frame* f, Layer* l);
+
+        void _draw(Frame* f, int op, int symm);
+
+        int _op;
+        int _p1;
 };
 
 void Plotter::Activate(Frame* f, Layer* l)
 {
-    /*
-	vector<uint8_t> frame;
-	
-    for (int n = 0; n < l->_frame_num; n++)
+
+    if (_op == 0)
+    //Plots frame as passed
     {
-        frame.clear();
-
-        for (int i = 0; i < l->_width; i++)
+        for (int n = 0; n < l->_frame_num; n++)
         {
-            for (int j = 0; j < l->_height; j++)
+            l->_frames.push_back(new Frame(*f));
+            cout << "   Plotter Frame " << n << " Generated" << endl;
+        }
+    }
+
+    if (_op == 1)
+    {
+        f->_clear();
+
+        for (int i = 0; i < _p1; i++)
+            _draw(f, 1, 1);
+
+        l->_frames.push_back(new Frame(*f));
+    }
+}
+
+void Plotter::_draw(Frame* f, int op, int symm)
+{
+    if (op == 1)
+    //Draw Rectangle
+    {
+        int v_bound_1, v_bound_2, h_bound_1, h_bound_2;
+        int v_edge = (int) ((float) f->_height * 0.1);
+        int h_edge = (int) ((float) f->_width  * 0.1);
+
+        //generate rectangle coordinates
+        if (symm)
+        {
+            v_bound_1 = rand() % (int)(((float)f->_height / 2) - 2 * v_edge) + (int)((float)(f->_height / 2) + v_edge);
+            v_bound_2 = f->_height - v_bound_1;
+            h_bound_1 = rand() % (int)(((float)f->_width  / 2) - 2 * h_edge) + (int)((float)(f->_width  / 2) + h_edge);
+            h_bound_2 = f->_width  - h_bound_1;
+        }
+        else
+        {
+            int temp;
+
+            v_bound_1 = rand() % (f->_height - 2 * v_edge) + v_edge;
+            v_bound_2 = rand() % (f->_height - 2 * v_edge) + v_edge;
+            h_bound_1 = rand() % (f->_width  - 2 * h_edge) + h_edge;
+            h_bound_2 = rand() % (f->_width  - 2 * h_edge) + h_edge;
+
+            //ensure bound 1 > bound 2
+            if (v_bound_1 < v_bound_2)
             {
-                int rgba[] = {0, 0, 0, 255};
+                temp = v_bound_1;
+                v_bound_1 = v_bound_2;
+                v_bound_2 = temp;
+            }
 
-                if (((float)i / l->_width) < 0.25)
-                {
-                    rgba[0] = (n * 5 < 255) ? n * 5 : 255;
-                }
-                else if (((float)i / l->_width) < 0.5)
-                {
-                    rgba[1] = (n * 5 < 255) ? n * 5 : 255;
-                }
-                else if (((float)i / l->_width) < 0.75)
-                {
-                    rgba[2] = (n * 5 < 255) ? n * 5 : 255;
-                }
-                else
-                {
-                    rgba[0] = (n * 5 < 255) ? n * 5 : 255;
-                    rgba[1] = (n * 5 < 255) ? n * 5 : 255;
-                }
-
-                //cout << "n is " << n << ", rgb is " << rgba[0] << ", " << rgba[1] << ", " << rgba[2] << ", " << rgba[3] << "." << endl;
-
-                for (int k = 0; k < 4; k++)
-                    frame.push_back((uint8_t)rgba[k]);
+            if (h_bound_1 < h_bound_2)
+            {
+                temp = h_bound_1;
+                h_bound_1 = h_bound_2;
+                h_bound_2 = temp;
             }
         }
 
-        l->_frames.push_back(new Frame(frame, l->_width, l->_height));
-    }
-    */
-    //Plots frame as passed
+        //pick color
+        int rgba[4] = {0, 0, 0, 0};
 
-    for (int n = 0; n < l->_frame_num; n++)
-    {
-        l->_frames.push_back(new Frame(*f));
-        cout << "   Plotter Frame " << n << " Generated" << endl;
+        for (int i = 0; i < 3; i++)
+            rgba[i] = rand() % 255 + 0;
+
+        //draw horizontal sides
+        for (int i = v_bound_2; i <= v_bound_1; i++)
+        {
+            f->set(i, h_bound_1, rgba);
+            f->set(i, h_bound_2, rgba);
+        }
+
+        //draw vertical sides
+        for (int i = h_bound_2; i <= h_bound_1; i++)
+        {
+            f->set(v_bound_1, i, rgba);
+            f->set(v_bound_2, i, rgba);
+        }
     }
 }

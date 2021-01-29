@@ -8,7 +8,7 @@ class Frame
     public:
         Frame();
         Frame(const Frame &f) 
-            : _frame_data(f._frame_data), _meta_data(f._meta_data), _width(f._width), _height(f._height) {}
+            : _frame_data(f._frame_data), _width(f._width), _height(f._height) {}
             
         /*
         Frame(const Frame &f1, const frame &f2) 
@@ -82,15 +82,45 @@ class Frame
             _frame_data[i * _height * 4 + j * 4 + 3] = (uint8_t)rgba[3];
         }
 
+        void set_mask(int val)
+        {
+            for (int i = 0; i < _width * _height * 4; i = i + 4)
+                _frame_data[i + 3] = (uint8_t)val;
+        }
+
+        void _clear()
+        {
+            for (int i = 0; i < _width * _height * 4; i = i + 4)
+            {
+                _frame_data[i + 0] = 0;
+                _frame_data[i + 1] = 0;
+                _frame_data[i + 2] = 0;
+            }
+        }
+
+        void _color_vaporwave()
+        {
+            for (int i = 0; i < _width; i++) 
+            {
+                for (int j = 0; j < _height; j++)
+                {
+                    int temp[3] = {0,0,0};
+
+                    temp[0] = _frame_data[(i * _height + j) * 4 + 0];
+                    temp[1] = _frame_data[(i * _height + j) * 4 + 1];
+                    temp[2] = _frame_data[(i * _height + j) * 4 + 2];
+
+                    _frame_data[(i * _height + j) * 4 + 0] = 255 - temp[2];
+                    _frame_data[(i * _height + j) * 4 + 1] = 255 - temp[1];
+                    _frame_data[(i * _height + j) * 4 + 2] = 255 - temp[0];
+                }
+            }
+        }
+
         //Stores pixel RGBA data as array
         //  indexed by [i * _height + j]
         //  i, j iterated by _width, _height respectively
         vector<uint8_t> _frame_data;
-
-        //Stores sets of pixel meta data
-        //  indexed by meta data set,
-        //  then indexed by pixel
-        vector<vector<vector<int>>> _meta_data;
 
         int _width;
         int _height;

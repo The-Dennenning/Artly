@@ -1,51 +1,80 @@
-#include ".\events.h"
+#include "..\events.h"
 
-class Automata : public Event {
+class Cellular : public Event {
 
 	public:
-		Automata(int start, int dur, int type, int* args_i, float* args_f) :
-			Event(start, dur), _type(type), _args_i(args_i), _args_f(args_f) {}
+		Cellular(int start, int dur, int width, int height, int type, vector<int> args) :
+			Event(start, dur, width, height), _type(type), _args(args) {}
 
-		~Automata()
-		{
-			if (_args_i) delete[] _args_i;
-			if (_args_f) delete[] _args_f;
-		}
+		~Cellular() {}
 		
-		virtual void Activate(Bitmap* b, int frame_num);
-		
-		Bitmap* _b;
+		void Activate(Frame* f, Layer* l);
 		
 	private:
 
 		int _type;
-		int* _args_i;
-		float* _args_f;
+		vector<int> _args;
 
-		//Helper function for Automata
-		int* countNeighbors(int i, int j, int AE, int* newRGB, int state_num);
+		vector<vector<int>> _curr_state;		//current automata state
+		vector<vector<int>> _next_state;		//next automata state
+		vector<vector<vector<int>>> _held_rgb;	//color held in cell
 
-		void automata_2S();		// _type = 1
-		void automata_3S();		// _type = 2
+		//Helper function for Cellular
+		int _countNeighbors(Frame* f, int i, int j, int AE, int* newRGB);
+
+		void Cellular_2S(Frame* f);		// _type = 1
+		void Cellular_3S(Frame *f);		// _type = 2
 };
 
 
-void Automata::Activate(Bitmap* b, int frame_num)
+void Cellular::Activate(Frame* f, Layer* l)
 {
-	_b = b;
-
-	//Activate if frame number is after start but before end of duration
-	if (frame_num >= _start && frame_num < _start + _duration)
+	cout << "	prepping metadata..." << endl;
+	//Prep metadata
+	for (int i = 0; i < _width; i++)
 	{
-		switch(_type)
+		vector<int> curr(_height, 0);
+		_curr_state.push_back(curr);
+
+		vector<int> next(_height, 0);
+		_next_state.push_back(next);
+
+		vector<vector<int>> rgbs;
+		for (int j = 0; j < _height; j++)
 		{
-			case 1:
-				automata_2S();
-				break;
-			case 2:
-				automata_3S();
-				break;
+			int rgba[] = {0, 0, 0, 0};
+			f->get(i, j, rgba);
+
+				int sum = rgba[0] + rgba[1] + rgba[2];
+				if (sum > 64) 
+				{
+					_curr_state[i][j] = 1;
+				}
+				
+			vector<int> rgb;
+				rgb.push_back(rgba[0]);
+				rgb.push_back(rgba[1]);
+				rgb.push_back(rgba[2]);
+			rgbs.push_back(rgb);
 		}
+		_held_rgb.push_back(rgbs);
+	}
+
+	cout << "	beginning cellular run..." << endl;
+
+	for (int n = 0; n < l->_frame_num; n++)
+	{
+		l->_frames.push_back(new Frame(*f));
+		f = l->_frames[n];
+
+		Cellular_2S(f);
+
+		for (int i = 0; i < _width; i++) for (int j = 0; j < _height; j++)
+			_curr_state[i][j] = _next_state[i][j];
+	
+#ifdef DEBUG
+		cout << "	Cellular Frame " << n << " Generated" << endl; 
+#endif
 	}
 }
 
@@ -53,20 +82,17 @@ void Automata::Activate(Bitmap* b, int frame_num)
 //	Gets new color, returned in newrgb
 //	Only considers "neighbors" that are in state specified by 'states'
 //		state_num determines how many states to consider
-int* Automata::countNeighbors(int i, int j, int AE, int* newrgb, int state_num)
+int Cellular::_countNeighbors(Frame *f, int i, int j, int AE, int* newrgb)
 {
 	int i_upper_bound, i_lower_bound;
 	int j_upper_bound, j_lower_bound;
-	int row = _b->getSize(0);
-	int col = _b->getSize(1);
+	int row = _width;
+	int col = _height;
 
 	long sumrgb[4] = {0, 0, 0, 0};
 
-	int *neighbors = new int[state_num];
+	int neighbors = 0;
 	int not_none = 0;
-
-	for (int i = 0; i < state_num; i++)
-		neighbors[i] = 0;
 	
 	//Ensures bounds respect edges of table given Area of Effect
 	if 	(i - AE < 0)		{i_lower_bound = 0;}
@@ -86,16 +112,12 @@ int* Automata::countNeighbors(int i, int j, int AE, int* newrgb, int state_num)
 		{
 			if ((k != i) || (l != j))
 			{
-				int state = _b->getPixel(k, l).getState();
-				neighbors[state]++;
-				
-				if (state)
-				{
-					//Get color (for color blending purposes)
-					int* rgb = _b->getPixel(k, l).getHeldRGB();
+				if (_curr_state[k][l])
+				{	
+					neighbors++;
 
-					for (int n = 0; n < 4; n++)
-						sumrgb[n] += rgb[n];
+					for (int n = 0; n < 3; n++)
+						sumrgb[n] += _held_rgb[k][l][n];
 
 					not_none++;
 				}
@@ -104,73 +126,74 @@ int* Automata::countNeighbors(int i, int j, int AE, int* newrgb, int state_num)
 	}
 
 	//Averages color of active neighbors (if any neighbors are alive)
-	for (int n = 0; n < 4; n++) 
+	for (int n = 0; n < 3; n++) 
 	{
 		if (not_none > 0)
 			newrgb[n] = (int) ((float)sumrgb[n] / not_none);
 		else
-			newrgb[n] = _b->getPixel(i, j).getHeldRGB()[n];
+			newrgb[n] = _held_rgb[i][j][n];
 	}
 
 	return neighbors;
 }
 
-//Automata transformation
+//Cellular transformation
 //	Standard 2-state, as in Conway's Game of Life
 //
-void Automata::automata_2S()
+void Cellular::Cellular_2S(Frame* f)
 {
 	//Factor in area of effect to ruleset
 	for (int i = 0; i < 4; i++)
-		_args_i[i] * (pow(3 + (_args_i[4] - 1) * 2, 2) - 1) / 8;
+		_args[i] = _args[i] * (pow(3 + (_args[4] - 1) * 2, 2) - 1) / 8;
 
-	//Loop through bitmap applying automata Automata
-	for (int i = 0; i < _b->getSize(0); i++){
+	//Loop through bitmap applying Cellular Cellular
+	for (int i = 0; i < _width; i++){
 
-		for (int j = 0; j < _b->getSize(1); j++) {
+		for (int j = 0; j < _height; j++) {
 
 			//Get neighbors of current pixel
 			int newrgb[4] = {0, 0, 0, 0};
-			int* neighbors = countNeighbors(i, j, _args_i[4], newrgb, 2);
+			int revrgb[4] = {0, 0, 0, 0};
+			int neighbors = _countNeighbors(f, i, j, _args[4], newrgb);
 
-			_b->getPixel(i,j).setHeldRGB(newrgb);
+			for (int k = 0; k < 3; k++)
+				revrgb[k] = 255 - newrgb[k];
 
 			//Calculates whether, based on active neighbors, an inactive pixel turns on
-			if (_b->getPixel(i, j).getState() == 0){
-				if ((neighbors[1] >= _args_i[2]) && (neighbors[1] <= _args_i[3])) {
-					_b->getPixel(i, j).transition(1);
+			if (_curr_state[i][j] == 0){
+				if ((neighbors >= _args[2]) && (neighbors <= _args[3])) {
+					_next_state[i][j] = 1;
+					f->set(i, j, revrgb);
 				} else {
-					_b->getPixel(i, j).transition(0);
+					_next_state[i][j] = 0;
+					f->set(i, j, newrgb);
 				}
 			}
 			
 			//Calculates whether, based on inative neighbors, an active pixel turns off
-			else if (_b->getPixel(i, j).getState() == 1) {
-				if ((neighbors[1] >= _args_i[0]) && (neighbors[1] <= _args_i[1])) {
-					_b->getPixel(i, j).transition(1);
-				} else {
-					_b->getPixel(i, j).transition(0);
+			else if (_curr_state[i][j] == 1) {
+				if ((neighbors >= _args[0]) && (neighbors <= _args[1])) {
+					_next_state[i][j] = 1;
+					f->set(i, j, revrgb);
+				 } else {
+					_next_state[i][j] = 0;
+					f->set(i, j, newrgb);
 				}
 			}
 
-			delete[] neighbors;
-		}
-	}
-
-	//Rectifies changes made during cellular automata Automata
-	for (int i = 0; i < _b->getSize(0); i++){
-		for (int j = 0; j < _b->getSize(1); j++) {
-			_b->getPixel(i, j).rectify();
+			for (int n = 0; n < 3; n++)
+				_held_rgb[i][j][n] = newrgb[n];
 		}
 	}
 }
 
-//Automata transformation
+/*
+//Cellular transformation
 //	3 State - Cerebellum
-void Automata::automata_3S()
+void Cellular::Cellular_3S()
 {
 
-	//Loop through bitmap applying automata Automata
+	//Loop through bitmap applying Cellular Cellular
 	for (int i = 0; i < _b->getSize(0); i++){
 
 		for (int j = 0; j < _b->getSize(1); j++) {
@@ -211,10 +234,11 @@ void Automata::automata_3S()
 		}
 	}
 
-	//Rectifies changes made during cellular automata Automata
+	//Rectifies changes made during cellular Cellular Cellular
 	for (int i = 0; i < _b->getSize(0); i++){
 		for (int j = 0; j < _b->getSize(1); j++) {
 			_b->getPixel(i, j).rectify();
 		}
 	}
 }
+*/

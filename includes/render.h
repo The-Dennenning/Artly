@@ -32,8 +32,10 @@
 class Render {
 
     public:
-        Render() {}
+        Render(int scale) : _scale(scale) {}
         ~Render() {for (auto l : _layers) delete l;}
+
+        int _scale;
 
         //Generates layer
         //  using seed frame and event
@@ -133,11 +135,72 @@ class Render {
                 _layers.pop_back();
                 Layer* l2 = _layers.back();
                 _layers.pop_back();
+                
+                //determine bounds of new layer given those of composite layers
+                int _start = (l1->_start < l2->_start) ? l1->_start : l2->_start;
+                int _end = (l1->_end > l2->_end) ? l1->_end : l2->_end;
 
-                _layers.push_back(new Layer(l1, l2, 0));
+                if ((_start == l1->_start) && ((_start + (l1->_end - l1->_start)) == l2->_start))
+                {
+                    if(l1->_frames.size() >= l2->_frames.size())
+                    {
+                        l1->_frames.insert(l1->_frames.end(), l2->_frames.begin(), l2->_frames.end());
+                        l1->_end = _end;
+                        l1->_frame_num = _end - _start;
+                        _layers.push_back(l1);
+                    }
+                    else
+                    {
+                        l2->_frames.insert(l2->_frames.begin(), l1->_frames.begin(), l1->_frames.end());
+                        l2->_start = _start;
+                        l2->_frame_num = _end - _start;
+                        _layers.push_back(l2);
+                    }
+#ifdef DEBUG  
+                    cout << "Layer Composited by vector operation in Render" << endl;
+#endif
+                }
 
-                delete l1;
-                delete l2;
+                else if ((_start == l2->_start) && ((_start + (l2->_end - l2->_start)) == l1->_start))
+                {
+                    if(l1->_frames.size() >= l2->_frames.size())
+                    {
+                        l1->_frames.insert(l1->_frames.begin(), l2->_frames.begin(), l2->_frames.end());
+                        l1->_start = _start;
+                        l1->_frame_num = _end - _start;
+                        _layers.push_back(l1);
+                    }
+                    else
+                    {
+                        l2->_frames.insert(l2->_frames.end(), l1->_frames.begin(), l1->_frames.end());
+                        l2->_end = _end;
+                        l2->_frame_num = _end - _start;
+                        _layers.push_back(l2);
+                    }
+#ifdef DEBUG
+                    cout << "Layer Composited by vector operation in Render" << endl;
+#endif
+                }
+
+                else
+                {
+                    _layers.push_back(new Layer(l1, l2, 0));
+
+                    delete l1;
+                    delete l2;
+
+#ifdef DEBUG
+                    cout << "Layer Composited by copy constructor in Render" << endl;
+#endif
+                }
+
+#ifdef DEBUG
+                cout << "   Now, _layers contains: ";
+
+                for (auto l : _layers) cout << l->_id << ", ";
+
+                cout << endl;
+#endif
             }
         }
 
@@ -157,7 +220,7 @@ class Render {
 
             for (int i = 0; i < l->_frame_num; i++)
             {
-                GifWriteFrame(&gifw, flip(l->_frames[i]).data(), l->_width, l->_height, 10);
+                GifWriteFrame(&gifw, flip(l->_frames[i]).data(), l->_width * _scale, l->_height * _scale, 10);
 
 #ifdef DEBUG
                 cout << "   Frame " << i << " Written" << endl;
@@ -176,11 +239,17 @@ class Render {
 
             for (int j = 0; j < f->_height; j++)
             {
-                for (int i = 0; i < f->_width; i++)
+                for (int m1 = 0; m1 < _scale; m1++)
                 {
-                    for (int k = 0; k < 4; k++)
+                    for (int i = 0; i < f->_width; i++)
                     {
-                        flip.push_back(f->_frame_data[i * f->_height * 4 + (j * 4) + k]);
+                        for (int m2 = 0; m2 < _scale; m2++)
+                        {
+                            for (int k = 0; k < 4; k++)
+                            {
+                                flip.push_back(f->_frame_data[i * f->_height * 4 + (j * 4) + k]);
+                            }
+                        }
                     }
                 }
             }
