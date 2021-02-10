@@ -1,12 +1,12 @@
+#ifndef _BITMAP_HPP
+#define _BITMAP_HPP
+
 #include <iostream>
 #include <vector>
 #include <math.h>
 #include <string.h>
 
 using namespace std;
-
-#ifndef _BITMAP_HPP
-#define _BITMAP_HPP
 
 // 
 class BADHEADER : public exception {
@@ -126,7 +126,24 @@ class Bitmap
 
 		//For use in overloading extraction operator
 		Pixel getConstPixel(int i, int j) const {return map[i][j];}
-		
+
+		//Sets bitmap pixel data to frame pixel data
+		void settoFrame(vector<uint8_t> frame_data)
+		{
+			int n = 0;
+
+			for (int i = 0; i < size[0]; i++)
+			{	
+				for (int j = 0; j < size[1]; j++)
+				{
+					for (int k = 0; k < 4; k++)
+					{
+						map[i][j].getRGB()[k] = frame_data[n++];
+					}
+				}
+			}
+		}
+
 		//Sets bitmap to color;
 		void clear(int* rgb)
 		{

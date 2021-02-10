@@ -12,6 +12,7 @@
 #include "..\includes\Events\plotter.h"
 #include "..\includes\Events\painterly.h"
 #include "..\includes\Events\cellular.h"
+#include "..\includes\Events\kmeans.h"
 
 #define RED 2
 #define BLUE 3
@@ -20,6 +21,7 @@
 
 using namespace std;
 
+void Run_KMeans();
 void Run_Cellular();
 void Run_Cellular(int* params, int n);
 void Run_Painterly();
@@ -29,9 +31,32 @@ int main(int argc, char** argv)
     // Seeding random number generator.
     srand(time(NULL));
 
-    Run_Painterly();
+    Run_KMeans();
 
     return 0;
+}
+
+void Run_KMeans()
+{
+    ofstream out;
+    ifstream in;
+    Bitmap image;
+
+    in.open("input/in.bmp", ios::binary);
+    in >> image;
+    in.close();
+
+    Frame *f = new Frame(image);
+
+    image.settoFrame(f->flip());
+
+    out.open("output/check.bmp", ios::binary);
+    out << image;
+    out.close();
+
+    Kmeans *k = new Kmeans(0, 0, f, f, &image, 3);
+
+    k->Activate(f, nullptr);
 }
 
 void Run_Cellular()
@@ -116,7 +141,7 @@ void Run_Painterly()
  
     string outfile("output/Overflow.gif");
 
-    for (int i = 0; i <= 16; i++)
+    for (int i = 0; i <= 15; i++)
     {
         string file_name("input/" + to_string(i) + ".bmp");
 
@@ -205,7 +230,7 @@ void Run_Painterly()
     delete output;
     output = new Frame(*r.layer_getLastFrame());
 
-    layers.push_back(r.Add_Layer(output, new Painter(400, 100, output, reference, 75, 3)));
+    layers.push_back(r.Add_Layer(output, new Painter(400, 100, output, reference, 5, 3)));
 
     cout << "Layer 2 Initialized..." << endl;
 
@@ -214,28 +239,28 @@ void Run_Painterly()
     delete output;
     output = new Frame(*r.layer_getLastFrame());
 
-    layers.push_back(r.Add_Layer(output, new Painter(500, 25, output, reference, 5, 3)));
+    layers.push_back(r.Add_Layer(output, new Painter(500, 25, output, reference, 10, 3)));
 
     delete reference;
     reference = new Frame(*inits[3]);
     delete output;
     output = new Frame(*r.layer_getLastFrame());
 
-    layers.push_back(r.Add_Layer(output, new Painter(525, 50, output, reference, 10, 3)));
+    layers.push_back(r.Add_Layer(output, new Painter(525, 25, output, reference, 25, 3)));
 
     delete reference;
     reference = new Frame(*inits[3]);
     delete output;
     output = new Frame(*r.layer_getLastFrame());
 
-    layers.push_back(r.Add_Layer(output, new Painter(575, 50, output, reference, 50, 3)));
+    layers.push_back(r.Add_Layer(output, new Painter(550, 50, output, reference, 50, 3)));
 
     delete reference;
     reference = new Frame(*inits[3]);
     delete output;
     output = new Frame(*r.layer_getLastFrame());
 
-    layers.push_back(r.Add_Layer(output, new Painter(625, 125, output, reference, 200, 1)));
+    layers.push_back(r.Add_Layer(output, new Painter(600, 80, output, reference, 100, 3)));
     
     cout << "Layer 3 Initialized..." << endl;
 
@@ -244,101 +269,194 @@ void Run_Painterly()
     delete output;
     output = new Frame(*r.layer_getLastFrame());
     
-    layers.push_back(r.Add_Layer(output, new Painter(750, 100, output, reference, 1000, 1)));
+    layers.push_back(r.Add_Layer(output, new Painter(680, 120, output, reference, 1000, 1)));
 
     cout << "Layer 4 Initialized..." << endl;
 
-    int frame_track = 850;
-
-for (int i = 5; i < 8; i++)
-{
-    delete reference;
-    reference = new Frame(*inits[i]);
-    delete output;
-    output = new Frame(*r.layer_getLastFrame());
-
-    layers.push_back(r.Add_Layer(output, new Painter(frame_track + 0, 60, output, reference, 50, 7)));
-
-    delete reference;
-    reference = new Frame(*inits[i]);
-    delete output;
-    output = new Frame(*r.layer_getLastFrame());
-    
-    layers.push_back(r.Add_Layer(output, new Painter(frame_track + 60, 60, output, reference, 75, 5)));
-
-    delete reference;
-    reference = new Frame(*inits[i]);
-    delete output;
-    output = new Frame(*r.layer_getLastFrame());
-    
-    layers.push_back(r.Add_Layer(output, new Painter(frame_track + 120, 60, output, reference, 200, 3)));
-
-    delete reference;
-    reference = new Frame(*inits[i]);
-    delete output;
-    output = new Frame(*r.layer_getLastFrame());
-    
-    layers.push_back(r.Add_Layer(output, new Painter(frame_track + 180, 60, output, reference, 500, 1)));
-
-    frame_track = frame_track + 240;
-
-    cout << "Layer " << i << " Initialized..." << endl;
-}
+    int frame_track = 800;
 
 
-for (int i = 9; i < 13; i++)
+for (int i = 5; i < 7; i++)
 {
     delete reference;
     reference = new Frame(*inits[i]);
     delete output;
     output = new Frame(*r.layer_getLastFrame());
     
-    layers.push_back(r.Add_Layer(output, new Painter(frame_track + 0, 150, output, reference, 1000, 1)));
+    layers.push_back(r.Add_Layer(output, new Painter(frame_track + 0, 60, output, reference, 100, 5)));
 
-    frame_track += 150;
+    delete reference;
+    reference = new Frame(*inits[i]);
+    delete output;
+    output = new Frame(*r.layer_getLastFrame());
+    
+    layers.push_back(r.Add_Layer(output, new Painter(frame_track + 60, 60, output, reference, 200, 3)));
+
+    delete reference;
+    reference = new Frame(*inits[i]);
+    delete output;
+    output = new Frame(*r.layer_getLastFrame());
+    
+    layers.push_back(r.Add_Layer(output, new Painter(frame_track + 120, 76, output, reference, 500, 1)));
+
+    frame_track = frame_track + 196;
 
     cout << "Layer " << i << " Initialized..." << endl;
 }
+
+//frametrack = 1192
+
+for (int i = 7; i < 8; i++)
+{
+    delete reference;
+    reference = new Frame(*inits[i]);
+    delete output;
+    output = new Frame(*r.layer_getLastFrame());
+    
+    layers.push_back(r.Add_Layer(output, new Painter(frame_track + 0, 143, output, reference, 2000, 1)));
+
+    frame_track += 143;
+
+    cout << "Layer " << i << " Initialized..." << endl;
+}
+
+for (int i = 8; i < 11; i++)
+{
+    delete reference;
+    reference = new Frame(*inits[i]);
+    delete output;
+    output = new Frame(*r.layer_getLastFrame());
+    
+    layers.push_back(r.Add_Layer(output, new Painter(frame_track + 0, 142, output, reference, 200, 1)));
+
+    frame_track += 142;
+
+    cout << "Layer " << i << " Initialized..." << endl;
+}
+
+//frametrack = 1761 - 2:56.1
+
+delete reference;
+reference = new Frame(*inits[11]);
+delete output;
+output = new Frame(*r.layer_getLastFrame());
+
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 50, output, reference, 2, 9)));
+frame_track = frame_track + 50;
+
+delete reference;
+reference = new Frame(*inits[11]);
+delete output;
+output = new Frame(*r.layer_getLastFrame());
+
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 68, output, reference, 10, 9)));
+frame_track = frame_track + 68;
+
+//frame_track = 1879 - 3:07.9
+
+delete reference;
+reference = new Frame(*inits[11]);
+delete output;
+output = new Frame(*r.layer_getLastFrame());
+
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 25, output, reference, 50, 7)));
+frame_track = frame_track + 25;
+
+delete reference;
+reference = new Frame(*inits[11]);
+delete output;
+output = new Frame(*r.layer_getLastFrame());
+
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 28, output, reference, 100, 7)));
+frame_track = frame_track + 28;
+
+
+cout << "Layer " << 11 << " Initialized..." << endl;
+
+//frametrack = 1932 - 3:13.2
+
+delete reference;
+reference = new Frame(*inits[12]);
+delete output;
+output = new Frame(*r.layer_getLastFrame());
+
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 54, output, reference, 100, 7)));
+frame_track = frame_track + 54;
+
+//frametrack = 1986 - 3:18.6
+
+delete reference;
+reference = new Frame(*inits[12]);
+delete output;
+output = new Frame(*r.layer_getLastFrame());
+
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 55, output, reference, 200, 3)));
+frame_track = frame_track + 55;
+
+cout << "Layer " << 12 << " Initialized..." << endl;
+
+//frametrack = 2041 - 3:24.1
 
 delete reference;
 reference = new Frame(*inits[13]);
 delete output;
 output = new Frame(*r.layer_getLastFrame());
 
-layers.push_back(r.Add_Layer(output, new Painter(frame_track, 150, output, reference, 100, 7)));
-frame_track = frame_track + 150;
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 218, output, reference, 1000, 1)));
+frame_track = frame_track + 218;
 
 cout << "Layer " << 13 << " Initialized..." << endl;
+
+//frametrack = 2259 - 3:45.9
 
 delete reference;
 reference = new Frame(*inits[14]);
 delete output;
 output = new Frame(*r.layer_getLastFrame());
 
-layers.push_back(r.Add_Layer(output, new Painter(frame_track, 100, output, reference, 1000, 1)));
-frame_track = frame_track + 100;
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 151, output, reference, 100, 3)));
+frame_track = frame_track + 151;
+
+delete reference;
+reference = new Frame(*inits[14]);
+delete output;
+output = new Frame(*r.layer_getLastFrame());
+
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 150, output, reference, 750, 1)));
+frame_track = frame_track + 150;
+
+delete reference;
+reference = new Frame(*inits[14]);
+delete output;
+output = new Frame(*r.layer_getLastFrame());
+
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 150, output, reference, 2000, 1)));
+frame_track = frame_track + 150;
 
 cout << "Layer " << 14 << " Initialized..." << endl;
+
+//frametrack = 2760
 
 delete reference;
 reference = new Frame(*inits[15]);
 delete output;
 output = new Frame(*r.layer_getLastFrame());
 
-layers.push_back(r.Add_Layer(output, new Painter(frame_track, 400, output, reference, 2000, 1)));
-frame_track = frame_track + 400;
-
-cout << "Layer " << 15 << " Initialized..." << endl;
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 110, output, reference, 150, 1)));
+frame_track = frame_track + 110;
 
 delete reference;
-reference = new Frame(*inits[16]);
+reference = new Frame(*inits[15]);
 delete output;
 output = new Frame(*r.layer_getLastFrame());
 
-layers.push_back(r.Add_Layer(output, new Painter(frame_track, 200, output, reference, 200, 1)));
-frame_track = frame_track + 200;
+layers.push_back(r.Add_Layer(output, new Painter(frame_track, 60, output, reference, 150, 1)));
+frame_track = frame_track + 60;
 
 cout << "Layer " << 15 << " Initialized..." << endl;
+
+//frametrack = 2880 - 4:48
+
 
 #ifdef DEBUG
     cout << "layers contains: ";
