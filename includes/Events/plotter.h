@@ -37,6 +37,21 @@ void Plotter::Activate(Frame* f, Layer* l)
 
         l->_frames.push_back(new Frame(*f));
     }
+
+    if (_op == 2)
+    {
+        f->_clear();
+
+        int rgb[4] = {255, 255, 255, 0};
+
+        for (int i = 0; i < 100; i++)
+        {
+            for (int j = 0; j < 100; j++)
+            {
+                f->set(i, j, rgb);
+            }
+        }
+    }
 }
 
 void Plotter::_draw(Frame* f, int op, int symm)

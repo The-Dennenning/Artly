@@ -32,10 +32,14 @@
 class Render {
 
     public:
+        Render() : _scale(1) {}
         Render(int scale) : _scale(scale) {}
+        Render(int scale, int delay) : _scale(scale), _delay(delay) {}
+
         ~Render() {for (auto l : _layers) delete l;}
 
         int _scale;
+        int _delay;
 
         //Generates layer
         //  using seed frame and event
@@ -220,7 +224,7 @@ class Render {
 
             for (int i = 0; i < l->_frame_num; i++)
             {
-                GifWriteFrame(&gifw, flip(l->_frames[i]).data(), l->_width * _scale, l->_height * _scale, 10);
+                GifWriteFrame(&gifw, flip(l->_frames[i]).data(), l->_width * _scale, l->_height * _scale, _delay);
 
 #ifdef DEBUG
                 cout << "   Frame " << i << " Written" << endl;
@@ -260,6 +264,12 @@ class Render {
         Frame* layer_getLastFrame()
         {
             return _layers.back()->_frames.back();
+        }
+
+        Layer* get_content()
+        {
+            Composite_All();
+            return _layers.back();
         }
 
     private:

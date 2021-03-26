@@ -4,13 +4,13 @@
 **      Holds frame data for a certain number of frames
 **      Enables masking operations to be performed over frame data
 */
+#ifndef LAYER_H
+#define LAYER_H
 
 #include <vector>
 
 #include "frame.h"
 
-#ifndef LAYER_H
-#define LAYER_H
 
 class Layer {
 
@@ -19,6 +19,15 @@ class Layer {
             : _start(start), _frame_num(frame_num), _end(start + frame_num), _width(width), _height(height), _id(next_id) {next_id++;}
 
         ~Layer() {for (auto f : _frames) delete f;}
+
+        Layer(Layer* l)
+            : _start(l->_start), _frame_num(l->_frame_num), _end(l->_start + l->_frame_num), _width(l->_width), _height(l->_height), _id(next_id)
+        {
+            for (auto l : l->_frames)
+                _frames.push_back(new Frame(*l));
+
+            next_id++;
+        }
 
         Layer(Layer* l1, Layer* l2, int op)
         {

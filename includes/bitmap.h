@@ -358,6 +358,12 @@ ostream& operator<<(ostream& out, const Bitmap& b) {
 
 	out.write(b.header, b.headerLength);
 
+#ifdef DEBUG
+	cout << "bitmap depth: " << b.depth << endl;
+	cout << "bitmap width: " << b.size[0] << endl;
+	cout << "bitmap height: " << b.size[1] << endl;
+#endif
+
 	for (int i = 0; i < b.size[0]; i++) {
 		for (int j = 0; j < b.size[1]; j++) {
 
@@ -371,12 +377,13 @@ ostream& operator<<(ostream& out, const Bitmap& b) {
 				}
 			} else {					//Writes 24 bit pixel
 				for (int k = 0; k < 3; k++) {
-					binary = getBinary(rgb[k]);
+					binary = getBinary(rgb[(2 - k)]);
 					out.write(binary, 1);
 					delete[] binary;
 				}
 			}
 		}	
+		
 		/*
 		//Pad output with zeros, if applicable
 		if (b.depth == 24) {

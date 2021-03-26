@@ -8,6 +8,7 @@ class Frame
 {
     public:
         Frame();
+        
         Frame(const Frame &f) 
             : _frame_data(f._frame_data), _width(f._width), _height(f._height) {}
 
@@ -65,6 +66,14 @@ class Frame
             _frame_data[i * _height * 4 + j * 4 + 3] = (uint8_t)rgba[3];
         }
 
+        void set(int i, int j, vector<int> rgb)
+        {
+            _frame_data[i * _height * 4 + j * 4 + 0] = (uint8_t)rgb[0];
+            _frame_data[i * _height * 4 + j * 4 + 1] = (uint8_t)rgb[1];
+            _frame_data[i * _height * 4 + j * 4 + 2] = (uint8_t)rgb[2];
+            _frame_data[i * _height * 4 + j * 4 + 3] = 255;
+        }
+
         void set_mask(int val)
         {
             for (int i = 0; i < _width * _height * 4; i = i + 4)
@@ -78,6 +87,16 @@ class Frame
                 _frame_data[i + 0] = 0;
                 _frame_data[i + 1] = 0;
                 _frame_data[i + 2] = 0;
+            }
+        }
+
+        void _clear_w()
+        {
+            for (int i = 0; i < _width * _height * 4; i = i + 4)
+            {
+                _frame_data[i + 0] = 255;
+                _frame_data[i + 1] = 255;
+                _frame_data[i + 2] = 255;
             }
         }
 
@@ -116,7 +135,7 @@ class Frame
                 }
 
             }
-
+            
             return flip;
         }
 

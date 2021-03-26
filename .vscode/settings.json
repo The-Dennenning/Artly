@@ -6,6 +6,10 @@
         "xstring": "cpp",
         "xutility": "cpp",
         "xiosbase": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "iostream": "cpp",
+        "fstream": "cpp",
+        "string": "cpp",
+        "iosfwd": "cpp"
     }
 }
