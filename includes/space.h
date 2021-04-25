@@ -63,7 +63,7 @@ class Vertex
 {
     public:
         Vertex() {}
-        Vertex(int x, int y, int z)
+        Vertex(double x, double y, double z)
         {
             _coord[0] = x;
             _coord[1] = y;
@@ -77,7 +77,7 @@ class Vertex
         vector<pair<Vertex*, Vertex*>> _conto;
 
         //coordinates of this vertex
-        int _coord[3];
+        double _coord[3];
         
         int check(double p[], int id);
 };
@@ -88,12 +88,18 @@ class Face : public Object
     public:
         Face() : Object() {}
         
+        Face(Space* s, double scale, int ID, int type) 
+            : Object(s), _scale(scale), _ID(ID), _type(type) {}
+            
         Face(Space* s, double scale, int ID) 
-            : Object(s), _scale(scale), _ID(ID) {}
+            : Object(s), _scale(scale), _ID(ID), _type(0) {}
 
         //face ID
         //  the index that this face has in object's face vector
         int _ID;
+
+        //for use in scripting face content
+        int _type;
 
         //some unit vector normal to the plane of the face
         double _normal[3];
@@ -123,8 +129,6 @@ void Space::intersect(Ray *r)
     {
         for (auto f : o->_faces)
         {
-            if (f->_ID == 1)
-                cout << "checking face " << f->_ID << endl;
             if (f->check(r)) return;
         }
     }
@@ -385,7 +389,7 @@ void Face::get_content_value(Ray* r, double p[3])
 
     //j value of content pixel
     //  solves v3 + j*v2 + i*v1 = p for j
-    int j;
+    double j;
 
         if (v2[0] * v1[1] - v1[0] != 0) 
         {
@@ -419,7 +423,7 @@ void Face::get_content_value(Ray* r, double p[3])
         }
         else j = 0;
 
-    int i;
+    double i;
 
         if (v1[0] != 0)    
             i = (p[0] - v3[0] - j * v2[0]) / v1[0];
@@ -431,13 +435,46 @@ void Face::get_content_value(Ray* r, double p[3])
 
 #ifdef DEBUG
     cout << "       pre scale and mod... (" << i << ", " << j << ")" << endl;
-#endif 
+#endif
 
     i = ((int) (i * _scale)) % _content->_width;
     j = ((int) (j * _scale)) % _content->_height;
 
+/*
     for (int k = 0; k < 3; k++)
         r->rgb.push_back(_content->_frames[_s->_t % _content->_frames.size()]->_frame_data[(i * _content->_height + j) * 4 + k]);
+*/
+    int n;
+
+    if (_type == 0)
+        n = 0;
+    else if (_type == 1)
+    {
+        if (_s->_t < 50)
+            n = 1;
+        else if (_s->_t < 100)
+            n = 2;
+        else
+            n = 3;
+    }
+    else if (_type == 2)
+    {
+        if (_s->_t < 200)
+            n = 4;
+        else if (_s->_t < 230)
+            n = 5;
+        else if (_s->_t < 260)
+            n = 6;
+        else
+            n = 7;
+    }
+    else if (_type == 3)
+        n = 8;
+    else if (_type == 4)
+        n = 9;
+
+    for (int k = 0; k < 3; k++)
+        r->rgb.push_back(_content->_frames[n]->_frame_data[(i * _content->_height + j) * 4 + k]);
 
 #ifdef DEBUG
     if (rand() % 10000 == 1) {
@@ -445,11 +482,6 @@ void Face::get_content_value(Ray* r, double p[3])
         cout << "           at pixel (" << i << ", " << j << ")" << endl;
     }
 #endif
-
-    /*
-    if (r->rgb[0] != 0)
-        cout << "       in func with value (" << r->rgb[0] << ", " << r->rgb[1] << ", " << r->rgb[2] << ")" << endl;
-    */
 } 
 
 

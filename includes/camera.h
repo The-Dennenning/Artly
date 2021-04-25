@@ -11,11 +11,30 @@
 class Camera : public Event
 {
     public:
-        Camera(int start, int dur, int width, int height) :
-            Event(start, dur, width, height) {}
+        Camera(int start, int dur, int width, int height, int type) :
+            Event(start, dur, width, height), _type(type) 
+            {
+                _delta_c[0] = 0;
+                _delta_c[1] = 0;
+
+                _angle[0] = 0;
+                _angle[1] = 0;
+                _angle[2] = -1;
+                _angle[3] = 0;
+                _angle[4] = 1;
+                _angle[5] = 0;
+                _angle[6] = 1;
+                _angle[7] = 0;
+                _angle[8] = 0;
+            }
+
+        vector<Face*> _fs;
 
         //Space that this camera samples from when activated
         Space* _s;
+
+        //different types to select different movement scripts
+        int _type;
 
         //position of BOTTOM LEFT corner of camera in 3-space
         double _coord[3], _angle[9];
@@ -61,6 +80,25 @@ class Camera : public Event
         //updates camera coordinates and angle with given delta
         void update(double n)
         {
+            _s->_t = n;
+            
+            if (n == 100)
+            {
+                _s->_objects.clear();
+                _s->_objects.push_back(_fs[2]);
+                _s->_objects.push_back(_fs[3]);
+                _s->_objects.push_back(_fs[4]);
+            }
+            else if (n == 260)
+            {
+                _s->_objects.clear();
+                _s->_objects.push_back(_fs[0]);
+                _s->_objects.push_back(_fs[1]);
+                _s->_objects.push_back(_fs[2]);
+                _s->_objects.push_back(_fs[3]);
+                _s->_objects.push_back(_fs[4]);
+            }
+
             /*
             _angle[1] += sin(n * 3 / 180);
             _angle[2] += sin(n * 3 / 180);
@@ -89,33 +127,72 @@ class Camera : public Event
 
             /*
             */
-
-            if (((int) n) % 400 == 0)
+/*
+            if (_type == 1)
             {
-                _delta_c[0] = ((double) (rand() % 20) / 10) - 1;
-                _delta_c[1] = ((double) (rand() % 20) / 10) - 1;
+                if (((int) n) % 100 == 0)
+                {
+                    _delta_c[0] = ((double) (rand() % 20) / 10) - 1;
+                    _delta_c[1] = ((double) (rand() % 20) / 10) - 1;
 
-                int z = rand() % 500 + 50;
-                _real_height = z;
-                _real_width = z;
+                    int z = rand() % 200 + 50;
+                    _real_height = z;
+                    _real_width = z;
 
-                int d = rand() % 360;
+                    int d = rand() % 360;
+                    
+                    _angle[3] = cos((d + 90) * PI / 180);
+                    _angle[4] = sin((d + 90) * PI / 180);
+
+                    _angle[6] = cos(d * PI / 180);
+                    _angle[7] = sin(d * PI / 180);
                 
-                _angle[3] = cos((d + 90) * PI / 180);
-                _angle[4] = sin((d + 90) * PI / 180);
+                    _coord[0] = rand() % 1000 - 500;
+                    _coord[1] = rand() % 1000 - 500;
+                }
 
-                _angle[6] = cos(d * PI / 180);
-                _angle[7] = sin(d * PI / 180);
-            
-                _coord[0] = rand() % 1000 - 500;
-                _coord[1] = rand() % 1000 - 500;
+                _coord[0] += _delta_c[0];
+                _coord[1] += _delta_c[1];
+
+                if (((int) n) % 2 == 0)
+                    _s->_t++;
             }
 
-            _coord[0] += _delta_c[0];
-            _coord[1] += _delta_c[1];
+            if (_type == 2)
+            {
+                if (((int) n) % 250 == 0)
+                {
+                    _delta_c[0] = ((double) (rand() % 20) / 10) - 1;
+                    _delta_c[1] = ((double) (rand() % 20) / 10) - 1;
 
-            if (((int) n) % 2 == 0)
+                    int z = rand() % 200 + 200;
+                    _real_height = z;
+                    _real_width = z;
+
+                    int d = rand() % 360;
+                    
+                    _angle[3] = cos((d + 90) * PI / 180);
+                    _angle[4] = sin((d + 90) * PI / 180);
+
+                    _angle[6] = cos(d * PI / 180);
+                    _angle[7] = sin(d * PI / 180);
+                
+                    _coord[0] = rand() % 500 - 250;
+                    _coord[1] = rand() % 500 - 333;
+                }
+
+                _coord[0] += _delta_c[0];
+                _coord[1] += _delta_c[1];
+
                 _s->_t++;
+            }
+            */
+
+           _real_height = ((double) 200) / pow(10, n / 150);
+           _real_width = ((double) 200) / pow(10, n / 150);
+
+           _coord[0] = 100 + ((double) -100) / pow(10, n / 150);
+           _coord[1] = 100 + ((double) -100) / pow(10, n / 150);
         }
         
         //Samples the given space for a frame of given dimension
@@ -125,6 +202,9 @@ class Camera : public Event
             Ray* r = new Ray();
                 r->_width = _real_width / _width;
                 r->_height = _real_height / _height;
+                //sets ray angle to camera angle
+                for (int k = 0; k < 3; k++)
+                    r->_angle[k] = _angle[k];
 
             //pixel coords(0, 0) = real coords (0, 0)
             //  both are at bottom left of image
@@ -133,10 +213,6 @@ class Camera : public Event
             {
                 for (int j = 0; j < _height; j++)
                 {
-                    //sets ray angle to camera angle
-                    for (int k = 0; k < 3; k++)
-                        r->_angle[k] = _angle[k];
-
                     //calculate pixel vector 
                     //  i.e. real distance from camera coord to (i, j) coord
                     for (int k = 0; k < 3; k++)
@@ -160,7 +236,6 @@ class Camera : public Event
                     //  intersect returns RGB value, which is then set in frame
                     r->rgb.clear();
                     _s->intersect(r);
-
                     f->set(i, j, r->rgb);
 
                     /*

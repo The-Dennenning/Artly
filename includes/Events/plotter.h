@@ -3,8 +3,8 @@
 class Plotter : public Event
 {
     public:
-        Plotter(int start, int duration, int width, int height, int op, int p1) 
-            : Event(start, duration, width, height), _op(op), _p1(p1) {}
+        Plotter(int start, int duration, int width, int height, int op, int p1, int p2) 
+            : Event(start, duration, width, height), _op(op), _p1(p1), _p2(p2) {}
         ~Plotter() {}
 
 		void Activate(Frame* f, Layer* l);
@@ -13,6 +13,7 @@ class Plotter : public Event
 
         int _op;
         int _p1;
+        int _p2;
 };
 
 void Plotter::Activate(Frame* f, Layer* l)
@@ -105,15 +106,23 @@ void Plotter::_draw(Frame* f, int op, int symm)
         //draw horizontal sides
         for (int i = v_bound_2; i <= v_bound_1; i++)
         {
-            f->set(i, h_bound_1, rgba);
-            f->set(i, h_bound_2, rgba);
+            //to thickness specified by _p2
+            for (int j = 0; j <= _p2; j++)
+            {
+                f->set(i, h_bound_1 + j, rgba);
+                f->set(i, h_bound_2 - j, rgba);
+            }
         }
 
         //draw vertical sides
         for (int i = h_bound_2; i <= h_bound_1; i++)
         {
-            f->set(v_bound_1, i, rgba);
-            f->set(v_bound_2, i, rgba);
+            //to thickness specified by _p2
+            for (int j = 0; j <= _p2; j++)
+            {
+                f->set(v_bound_1 + _p2, i, rgba);
+                f->set(v_bound_2 - _p2, i, rgba);
+            }
         }
     }
 }
