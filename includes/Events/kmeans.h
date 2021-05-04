@@ -6,6 +6,12 @@
 #define CONSTRUCTOR 1
 #define ACTIVATION  2
 
+#define RED 0
+#define GREEN 1
+#define BLUE 2
+#define BRIGHT 3
+
+
 class Kmeans : public Event
 {
     public:
@@ -27,6 +33,21 @@ class Kmeans : public Event
                 _dID = to_string(i);
 
                 rectangulate(); 
+            }
+
+        Kmeans(int start, int dur, Frame* f, Bitmap* b, int k, int i, int type) :
+            Event(start, dur, b->getSize(0), b->getSize(1)), _b(b), _k(k), _iteration(0), _type(type)
+            {
+                cout << "   kmeans running: k = " << k << endl;
+                initialize(f, &_data, &_means);
+
+                while(!iterate(&_data, &_means, &_clusters)) {}  
+
+                _dID = to_string(i);
+
+                cout << "   sorting..." << endl;
+                sort();
+                cout << "   ...sort completed" << endl;
             }
 
 
@@ -53,6 +74,10 @@ class Kmeans : public Event
 
         void rectangulate();
 
+        int partition(vector<vector<int>> *arr, int low, int high);
+        void quickSort(vector<vector<int>> *arr, int low, int high);
+        void sort();
+
         void set_bitmap(Bitmap *b)
         {
             _b = b;
@@ -61,6 +86,8 @@ class Kmeans : public Event
         }
 
     private:
+
+        int _type;
 
         //number of iterations of kmeans algorithm
         int _iteration;
@@ -521,6 +548,8 @@ void Kmeans::rectangulate()
 
     for (int n = 0; n < _width * _height; n++)
     {
+        //first 3 values of rgb are for rgb value
+        //  fourth value is the ID of cluster this pixel belongs to
         vector<int> rgb(4, 0);
         result.push_back(rgb);
     }
@@ -660,5 +689,89 @@ void Kmeans::rectangulate()
         }
     }
 
+    print_bitmap(&result);
+}
+
+
+int Kmeans::partition(vector<vector<int>> *arr, int low, int high)
+{
+
+    // pivot (Element to be placed at right position)
+    int pivot = (*arr)[high][_type];  
+ 
+    int i = (low - 1);  // Index of smaller element
+
+    for (int j = low; j <= high - 1; j++)
+    {
+
+        // If current element is smaller than the pivot
+        if ((*arr)[j][_type] < pivot)
+        {
+            i++;    // increment index of smaller element
+			(*arr)[i].swap((*arr)[j]);
+        }
+    }
+			
+	(*arr)[i + 1].swap((*arr)[high]);
+
+    return (i + 1);
+}
+
+void Kmeans::quickSort(vector<vector<int>> *arr, int low, int high)
+{
+    if (low < high)
+    {
+        /* pi is partitioning index, arr[pi] is now
+           at right place */
+        int pi = partition(arr, low, high);
+
+        quickSort(arr, low, pi - 1);  // Before pi
+        quickSort(arr, pi + 1, high); // After pi
+    }
+}
+
+void Kmeans::sort()
+{
+    vector<vector<int>> result;
+
+    for (int i = 0; i < _data.size(); i++)
+    {
+        vector<int> rgb(3, 0);
+        result.push_back(rgb);
+
+        for (int k = 0; k < 3; k++)
+        {
+            result[i][k] = _data[i][k];
+        }
+    }
+
+    //iterates over each column in image
+    for (int i = 0; i < _width; i++)
+    {
+        //iterates through each pixel in column
+        int j = 0;
+        while(j < _height)
+        {
+            //height of column to sort
+            int h = 0;
+
+            //cluster ID of column to sort
+            int c = _clusters[i * _height + j];
+
+            //values to sort
+            vector<vector<int>> arr;
+
+            //find height of column to sort
+            while (_clusters[i * _height + j] == c && j < _height)
+            {
+                j++;
+                h++;
+            }
+
+            quickSort(&result, (i * _height) + j - h, (i * _height) + j - 1);
+        }
+    }
+
+    cout << "       printing..." << endl;
     print_bitmap(&result);
 }

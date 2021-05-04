@@ -16,40 +16,161 @@
 #include "..\includes\Events\painterly.h"
 #include "..\includes\Events\cellular.h"
 #include "..\includes\Events\kmeans.h"
-
-#define RED 2
-#define BLUE 3
-#define GREEN 4
-#define PURPLE 5
+#include "..\includes\Events\pixel_sort.h"
+#include "..\includes\Events\field.h"
 
 using namespace std;
 
+void Run_Evolutionary();
+void Run_Eros();
 void Run_KMeans_Rectangulate();
 void Run_KMeans();
 void Run_Cellular();
 void Run_Cellular(int* params, int n);
 void Run_Painterly();
 void Run_Plotter();
-
-void Run_Evolutionary();
-
 void Run_cellular_flyby();
-
 void Run_Kaleidoscope();
-
-void Run_Eros();
-
 void Run_3D_Telescope_Test();
+void Run_Sorter();
+void Run_Kmeans_Sorter();
+void Run_Field();
 
 int main(int argc, char** argv)
 {
     // Seeding random number generator.
     srand(time(NULL));
 
-    Run_3D_Telescope_Test();
+    Run_Field();
 
     return 0;
 }
+
+
+void Run_Field()
+{
+    int width = 540;
+    int height = 540;
+    int scale = 2;
+    int delay = 2;
+
+    Frame* f = new Frame(width, height);
+    f->_clear();
+
+    string outfile = "out.gif";
+
+    GifWriter gifw;
+    GifBegin(&gifw, outfile.c_str(), width * scale, height * scale, delay);
+
+    Render* r = new Render(scale, delay);
+
+    r->Add_Layer(f, new Field(0, 500, width, height, 5000, 100));
+
+    r->Export(gifw);
+
+    GifEnd(&gifw);
+
+}
+
+
+void Run_Kmeans_Sorter()
+{
+    ofstream out;
+    ifstream in;
+    Bitmap *image = new Bitmap();
+
+    int k_array[6] = {1, 2, 3, 4, 8, 16};
+
+    for (int i = 1; i <= 19; i++)
+    {   
+        cout << "Run " << i << endl;
+
+        image = new Bitmap();
+        string instring("input/Island/in " + to_string(i) + ".bmp");
+        in.open(instring);
+        in >> *image;
+        in.close();
+
+        Frame *f = new Frame(*image);
+        
+        for (int j = 0; j < 6; j++)
+            Kmeans *K = new Kmeans(0, 0, f, image, k_array[j], i, BLUE);
+
+        delete image;
+        delete f;
+    }   
+}
+
+
+
+void Run_Sorter()
+{
+    vector<string> strs;
+        strs.push_back("pron");
+        strs.push_back("Island");
+        strs.push_back("color pron");
+        strs.push_back("nature pics");
+
+    vector<int> bounds;
+        bounds.push_back(33);
+        bounds.push_back(71);
+        bounds.push_back(1);
+        bounds.push_back(19);
+        bounds.push_back(72);
+        bounds.push_back(150);
+        bounds.push_back(1);
+        bounds.push_back(13);
+
+    for (int n = 0; n < 4; n++)
+    {
+        for (int i = bounds[n * 2]; i < bounds[n * 2 + 1]; i++)
+        {
+            cout << strs[n] << ": run " << i << endl;
+            ifstream in;
+            ofstream out;
+
+            string file_name("input/" + strs[n] + "/in " + to_string(i) + ".bmp");
+
+            cout << "   Reading bitmap..." << endl;
+
+            Bitmap* image = new Bitmap();
+
+            in.open(file_name, ios::binary);
+            in >> *image;
+            in.close();
+
+            Frame* f = new Frame(*image);
+
+            Render* r = new Render(1, 2);
+
+            cout << "   Executing Sort..." << endl;
+
+            r->Add_Layer(f, new Sorter(0, f->_height, f->_width, f->_height, BLUE));
+
+            Frame* of = new Frame(*r->layer_getLastFrame());
+
+            image->settoFrame(of->flip());
+
+            string outfile = "output/" + strs[n] + " out " + to_string(i) + ".bmp";
+
+            cout << "   Saving bitmap..." << endl;
+
+            out.open(outfile, ios::binary);
+            out << *image;
+            out.close();
+
+            delete r;
+            delete f;
+            delete of;
+            delete image;
+        }
+    }
+}
+
+
+
+
+
 
 Frame* image_flip(Frame* f)
 {

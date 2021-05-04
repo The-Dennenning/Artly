@@ -10,6 +10,7 @@
         "iostream": "cpp",
         "fstream": "cpp",
         "string": "cpp",
-        "iosfwd": "cpp"
+        "iosfwd": "cpp",
+        "utility": "cpp"
     }
 }
