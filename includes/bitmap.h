@@ -53,6 +53,11 @@ class Pixel
 			for (int i = 0; i < 4; i++)
 				_rgb[i] = rgb;
 		}
+
+		void setRGB(int k, int val)
+		{
+			_rgb[k] = val;
+		}
 };
 
 class Bitmap

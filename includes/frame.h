@@ -48,6 +48,40 @@ class Frame
             }
 
         }
+
+        Frame(Frame* f, int width, int height, int w_off, int h_off)
+            : _width(width), _height(height)
+        {
+            for (int i = 0; i < _width; i++)
+            {
+                for (int j = 0; j < _height; j++)
+                {
+                    for (int k = 0; k < 4; k++)
+                    {
+                        _frame_data.push_back(f->_frame_data[((i + w_off) % f->_width) * f->_height * 4 + ((j + h_off) % f->_height) * 4 + k]);
+                    }
+                }
+            }
+        }
+
+        Frame(Frame* f, int h_off)
+            : _width(f->_width), _height(f->_height)
+        {
+            for (int i = 0; i < _width; i++)
+            {
+                for (int j = 0; j < _height; j++)
+                {
+                    for (int k = 0; k < 4; k++)
+                    {
+                        if (i <= h_off)
+                            _frame_data.push_back(f->_frame_data[i * _height * 4 + j * 4 + k]);
+                        else
+                            _frame_data.push_back(0);
+                    }
+                }
+            }
+        }
+
         ~Frame() {}
 
         void get(int i, int j, int* rgba)

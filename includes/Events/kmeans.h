@@ -1,5 +1,8 @@
 #include "..\events.h"
 
+#ifndef _KMEANS
+#define _KMEANS
+
 #define BIG_NUMBER 1000000000
 #define CONVERGE 1
 
@@ -12,9 +15,30 @@
 #define BRIGHT 3
 
 
+struct Kdata
+{
+    Kdata(vector<vector<int>> data, vector<vector<int>> means, vector<int> clusters, int width, int height)
+        : _data(data), _means(means), _clusters(clusters), _height(height), _width(width) {}
+
+    vector<vector<int>> _data;
+    vector<vector<int>> _means;
+    vector<int> _clusters;
+    int _width;
+    int _height;
+};
+
+
 class Kmeans : public Event
 {
     public:
+        Kmeans(Frame* f, int k) :
+            Event(0, 0, f->_width, f->_height), _k(k), _iteration(0) 
+            {
+                initialize(f, &_data, &_means);
+
+                while(!iterate(&_data, &_means, &_clusters)) {}    
+            }
+
         Kmeans(int start, int dur, Frame* f, Bitmap* b, int k) :
             Event(start, dur, b->getSize(0), b->getSize(1)), _b(b), _k(k), _iteration(0) 
             {
@@ -85,7 +109,11 @@ class Kmeans : public Event
             _height = _b->getSize(1);
         }
 
-    private:
+        Kdata* get_data()
+        {
+            Kdata* d = new Kdata(_data, _means, _clusters, _width, _height);
+            return d;
+        }
 
         int _type;
 
@@ -775,3 +803,5 @@ void Kmeans::sort()
     cout << "       printing..." << endl;
     print_bitmap(&result);
 }
+
+#endif

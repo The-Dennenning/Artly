@@ -10,6 +10,7 @@
 #include "..\includes\events.h"
 #include "..\includes\bitmap.h"
 #include "..\includes\gif.h"
+#include "..\includes\image_gen.h"
 
 #include "..\includes\Events\fractal.h"
 #include "..\includes\Events\plotter.h"
@@ -35,15 +36,155 @@ void Run_3D_Telescope_Test();
 void Run_Sorter();
 void Run_Kmeans_Sorter();
 void Run_Field();
+void Run_Kmeans_Collager();
+void Run_Kmeans_Tester();
+
+void Run_image_gen();
 
 int main(int argc, char** argv)
 {
     // Seeding random number generator.
     srand(time(NULL));
 
-    Run_Field();
+    Run_image_gen();
 
     return 0;
+}
+
+
+void Run_image_gen()
+{
+    int height = 252;
+    int depth = 2;
+    int k = 10;
+
+    Image_Gen ig(height, depth, k, "image_gen/wnbs.csv");
+}
+
+void Run_Kmeans_Tester()
+{
+    Bitmap *image = new Bitmap();
+    ofstream out;
+    ifstream in;
+
+    in.open("input/pron/in 95.bmp");
+    in >> *image;
+    in.close();
+
+    Frame* f1 = new Frame(*image);
+
+    Frame* f2 = new Frame(f1, 1536, 2048, 200, 1000);
+
+    delete image;
+
+    image = new Bitmap();
+
+    in.open("input/pron/in 155.bmp");
+    in >> *image;
+    in.close();
+
+    image->settoFrame(f2->flip());
+
+    out.open("output/test.bmp");
+    out << *image;
+    out.close();
+
+}
+
+void Run_Kmeans_Collector()
+{
+    
+}
+
+void Run_Splitter()
+{
+
+    ofstream out;
+    ifstream in;
+    Bitmap *image;
+}
+
+void Run_Kmeans_Collager()
+{
+    vector<Kdata*> data;
+    ofstream out;
+    ifstream in;
+    Bitmap *image;
+    Frame *f;
+
+    int _k = 3;
+    int _n = 100;
+
+    int height;
+    int width;
+
+    for (int i = 1; i <= _n; i++)
+    {
+        cout << "KMeansing image " << i << "..." << endl;
+        image = new Bitmap();
+        string instring("input/pron/in " + to_string(i) + ".bmp");
+        in.open(instring);
+        in >> *image;
+        in.close();
+        
+        f = new Frame(*image);
+        
+        Kmeans *K = new Kmeans(0, 0, f, image, _k);
+
+        data.push_back(K->get_data());
+
+        delete image;
+    }
+
+    in.open("input/pron/in 1.bmp");
+    in >> *image;
+    in.close();
+
+
+    for (int t = 0; t < 100; t++)
+    {
+        image->clear(255);
+
+        cout << endl << "Assembling final image..." << endl;
+
+        random_shuffle(data.begin(), data.end());
+
+        for (int k = 0; k < _k; k++)
+        {
+            cout << "   " << k << endl;
+
+            for (int n = 0; n < _n; n++)
+            {
+                for (int i = 0; i < width; i++)
+                {
+                    if (i >= data[n]->_width)
+                        break;
+
+                    for (int j = 0; j < height; j++)
+                    {
+                        if (j >= data[n]->_height)
+                            break;
+
+                        if (data[n]->_clusters[i * data[n]->_height + j] == k)
+                        {
+                            for (int h = 0; h < 3; h++)
+                            {
+                                image->getPixel(j, i).setRGB(h, data[n]->_data[i * data[n]->_height + j][h]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        out.open("output/collage_out " + to_string(t + 50) + ".bmp");
+        out << *image;
+        out.close();
+
+    }
+
+    for (auto d : data) delete d;
+    delete image;
 }
 
 
@@ -81,12 +222,12 @@ void Run_Kmeans_Sorter()
 
     int k_array[6] = {1, 2, 3, 4, 8, 16};
 
-    for (int i = 1; i <= 19; i++)
+    for (int i = 126; i <= 126; i++)
     {   
         cout << "Run " << i << endl;
 
         image = new Bitmap();
-        string instring("input/Island/in " + to_string(i) + ".bmp");
+        string instring("output/Island Collage/collage_out " + to_string(i) + ".bmp");
         in.open(instring);
         in >> *image;
         in.close();
@@ -100,8 +241,6 @@ void Run_Kmeans_Sorter()
         delete f;
     }   
 }
-
-
 
 void Run_Sorter()
 {
