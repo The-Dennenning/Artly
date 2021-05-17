@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 void Run_image_gen()
 {
     int height = 252;
-    int depth = 2;
+    int depth = 5;
     int k = 10;
 
     Image_Gen ig(height, depth, k, "image_gen/wnbs.csv");
