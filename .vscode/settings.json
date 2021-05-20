@@ -11,6 +11,7 @@
         "fstream": "cpp",
         "string": "cpp",
         "iosfwd": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "list": "cpp"
     }
 }

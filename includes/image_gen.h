@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 
 #include "Events\kmeans.h"
 
@@ -34,7 +35,7 @@
                                 > 0.5 == that much * 2 greater than cluster
                     
                 which totals...
-                    4 * _height * _depth + 3 * _k
+                    4 * _height * _w + 3 * _k
 
             neural network provides as output...
 
@@ -47,7 +48,7 @@
                 which totals...
                     4 * _height
 
-            has _h hidden layers, of _height * _depth * 2 values
+            has _h hidden layers, of _height * _w * 2 values
 
 */
 
@@ -107,11 +108,151 @@ class neuron
         }
 };
 
+class Training_Data_2
+{
+    public:
+        Training_Data_2(Frame *f, int h, int w)
+            : _height(f->_height), _width(f->_width), _h(h), _w(w)
+        {
+            for (int i = 0; i < _width * _height; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    _data.push_back((double)f->_frame_data[i * 4 + j]);
+                }
+            }
+        }
+
+        Training_Data_2(Training_Data_2 *td)
+            : _height(td->_height), _width(td->_width), _h(td->_h), _w(td->_w), _data(td->_data)
+        {}
+
+        void prep_random()
+        {
+            for (int i = 0; i < _w; i++)
+            {
+                for (int j = 0; j < _height; j++)
+                {
+                    for (int k = 0; k < 3; k++)
+                    {
+                        _data[i * _height * 3 + j * 3 + k] = ((double)(rand() % 100) / 100);
+                    }
+                }
+            }
+        }
+
+        //gets a 2D slice from the training data, formatted as a 1D input vector
+        //  input vector is of of size n_in
+        //  2D slice goes from point (i_off, j_off)
+        //                  to point (i_off - _w, j_off + _h)
+        vector<double> get_Input(int n_in, int i_off, int j_off)
+        {
+            vector<double> input;
+
+            if (j_off + _h > _height)
+            {   
+                cout << "Hull Breach - vertical offset error" << endl;
+                return input;
+            }
+
+            if (i_off - _w < -1)
+            {
+                cout << "Hull Breach - horizontal offset error" << endl;
+                return input;
+            }
+
+            for (int i = i_off; i > i_off - _w; i--)
+            {
+                for (int j = j_off; j < j_off + _h; j++)
+                {
+                    //get color information
+                    for (int k = 0; k < 3; k++)
+                        input.push_back(_data[i * _height * 3 + j * 3 + k]);
+                }
+            }
+
+            return input;
+        }
+
+        void set_Column(vector<double> output, int i_off, int j_off, int l)
+        {
+            int o = 0;
+
+            for (int j = j_off; j < j_off + l; j++)
+            {
+                for (int k = 0; k < 3; k++)
+                {
+                    _data[i_off * _height * 3 + j * 3 + k] = output[o];
+                    o++;
+                }
+            }
+        }
+
+        //gets raw difference between output data given and training data specified 
+        vector<double> get_Cost(vector<double> output, int i_off, int j_off)
+        {
+            vector<double> cost;
+            int o = 0;
+
+            for (int j = j_off; j < j_off + _h; j++)
+            {
+                for (int k = 0; k < 3; k++)
+                {
+                    cost.push_back(output[o] - _data[i_off * _height * 3 + j * 3 + k]);
+                    o++;
+                }
+            }
+
+            return cost;
+        }
+
+        //prints frame from training data
+        //  rgb value = (int) (mean - (adj - 0.5) / 255 * 2)
+        Frame* get_Frame()
+        {
+            Frame* f = new Frame(_width, _height);
+
+            f->_frame_data.clear();
+
+            for (int i = 0; i < _width * _height; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    int rgb = _data[i * 3 + j] * 255;
+
+                    if (rgb < 0)    rgb = 0;
+                    if (rgb > 255)  rgb = 255;
+
+                    f->_frame_data.push_back((uint8_t)rgb);
+                }
+                f->_frame_data.push_back((uint8_t) 255);
+            }
+
+            return f;
+        }
+
+        int _height;
+        int _width;
+
+        //number of clusters for kmeans clustering
+        int _k;
+
+        //height of window
+        int _h;
+
+        //width of window
+        int _w;
+
+        //pixel data is stored as a signed normalized distance from cluster mean in each color channel 
+        //  e.g. _data = raw / 255
+        vector<double> _data;
+};
+
 class Training_Data
 {
     public:
-        Training_Data(Frame *f, int k)
-            : _height(f->_height), _width(f->_width), _k(k)
+        Training_Data(Frame *f, int k, int h, int w)
+            : _height(f->_height), _width(f->_width), _k(k), _h(h), _w(w)
         {
             Kmeans km(f, k);
 
@@ -133,29 +274,57 @@ class Training_Data
             }
         }
 
+        Training_Data(Training_Data *td)
+            : _height(td->_height), _width(td->_width), _k(td->_k), _h(td->_h), _w(td->_w), _data(td->_data), _clusters(td->_clusters), _means(td->_means)
+        {}
+
+        void prep_random()
+        {
+            for (int i = 0; i < _w; i++)
+            {
+                for (int j = 0; j < _height; j++)
+                {
+                    for (int k = 0; k < 3; k++)
+                    {
+                        _data[i * _height * 3 + j * 3 + k] = ((double)(rand() % 100) / 100);
+                    }
+
+                    _clusters[i * _height + j] = ((double)(rand() % 100) / 100);
+                }
+            }
+
+            for (int k = 0; k < _k; k++)
+            {
+                for (int n = 0; n < 3; n++)
+                {
+                    _means[k * 3 + n] = ((double)(rand() % 100) / 100);
+                }
+            }
+        }
+
         //gets a 2D slice from the training data, formatted as a 1D input vector
         //  input vector is of of size n_in
         //  2D slice goes from point (i_off, j_off)
-        //                  to point (i_off - depth, j_off + height)
-        vector<double> get_Input(int n_in, int i_off, int j_off, int height, int depth)
+        //                  to point (i_off - _w, j_off + _h)
+        vector<double> get_Input(int n_in, int i_off, int j_off)
         {
             vector<double> input;
 
-            if (j_off + height > _height)
+            if (j_off + _h > _height)
             {   
                 cout << "Hull Breach - vertical offset error" << endl;
                 return input;
             }
 
-            if (i_off - depth < -1)
+            if (i_off - _w < -1)
             {
                 cout << "Hull Breach - horizontal offset error" << endl;
                 return input;
             }
 
-            for (int i = i_off; i > i_off - depth; i--)
+            for (int i = i_off; i > i_off - _w; i--)
             {
-                for (int j = j_off; j < j_off + height; j++)
+                for (int j = j_off; j < j_off + _h; j++)
                 {
                     //get color information
                     for (int k = 0; k < 3; k++)
@@ -172,11 +341,11 @@ class Training_Data
             return input;
         }
 
-        void set_Column(vector<double> output, int i_off, int j_off, int height)
+        void set_Column(vector<double> output, int i_off, int j_off, int l)
         {
             int o = 0;
 
-            for (int j = j_off; j < j_off + height; j++)
+            for (int j = j_off; j < j_off + l; j++)
             {
                 for (int k = 0; k < 3; k++)
                 {
@@ -193,20 +362,20 @@ class Training_Data
         }
 
         //gets raw difference between output data given and training data specified 
-        vector<double> get_Cost(vector<double> output, int i_off, int j_off, int height)
+        vector<double> get_Cost(vector<double> output, int i_off, int j_off)
         {
             vector<double> cost;
             int o = 0;
 
-            for (int j = j_off; j < j_off + height; j++)
+            for (int j = j_off; j < j_off + _h; j++)
             {
                 for (int k = 0; k < 3; k++)
                 {
-                    cost.push_back(_data[i_off * _height * 3 + j * 3 + k] - output[o]);
+                    cost.push_back(output[o] - _data[i_off * _height * 3 + j * 3 + k]);
                     o++;
                 }
 
-                cost.push_back(_clusters[i_off * _height + j] - output[o]);
+                cost.push_back(output[o] - _clusters[i_off * _height + j]);
                 o++;
             }
 
@@ -240,7 +409,15 @@ class Training_Data
 
         int _height;
         int _width;
+
+        //number of clusters for kmeans clustering
         int _k;
+
+        //height of window
+        int _h;
+
+        //width of window
+        int _w;
 
         //pixel data is stored as a signed normalized distance from cluster mean in each color channel 
         //  e.g. _data = (mean - raw) / (255 * 2) + 0.5
@@ -256,137 +433,20 @@ class Training_Data
         vector<double> _clusters;
 };
 
-class Training_Data_2
-{
-    public:
-        Training_Data_2(Frame *f)
-            : _height(f->_height), _width(f->_width)
-        {
-            for (int i = 0; i < _width * _height; i++)
-            {
-                for (int j = 0; j < 3; j++)
-                {
-                    _data.push_back((((double) f->_frame_data[i * 4 + j])) / 255);
-                }
-            }
-        }
-
-        //gets a 2D slice from the training data, formatted as a 1D input vector
-        //  input vector is of of size n_in
-        //  2D slice goes from point (i_off, j_off)
-        //                  to point (i_off - depth, j_off + height)
-        vector<double> get_Input(int n_in, int i_off, int j_off, int height, int depth)
-        {
-            vector<double> input;
-
-            if (j_off + height > _height)
-            {   
-                cout << "Hull Breach - vertical offset error" << endl;
-                return input;
-            }
-
-            if (i_off - depth < -1)
-            {
-                cout << "Hull Breach - horizontal offset error" << endl;
-                return input;
-            }
-
-            for (int i = i_off; i > i_off - depth; i--)
-            {
-                for (int j = j_off; j < j_off + height; j++)
-                {
-                    //get color information
-                    for (int k = 0; k < 3; k++)
-                        input.push_back(_data[i * _height * 3 + j * 3 + k]);
-                }
-            }
-
-            return input;
-        }
-
-        void set_Column(vector<double> output, int i_off, int j_off, int height)
-        {
-            int o = 0;
-
-            for (int j = j_off; j < j_off + height; j++)
-            {
-                for (int k = 0; k < 3; k++)
-                {
-                    _data[i_off * _height * 3 + j * 3 + k] = output[o];
-                    o++;
-                }
-            }
-        }
-
-        //gets raw difference between output data given and training data specified 
-        vector<double> get_Cost(vector<double> output, int i_off, int j_off, int height)
-        {
-            vector<double> cost;
-            int o = 0;
-
-            for (int j = j_off; j < j_off + height; j++)
-            {
-                for (int k = 0; k < 3; k++)
-                {
-                    cost.push_back(_data[i_off * _height * 3 + j * 3 + k] - output[o]);
-                    o++;
-                }
-            }
-
-            return cost;
-        }
-
-        //prints frame from training data
-        //  rgb value = (int) (mean - (adj - 0.5) / 255 * 2)
-        Frame* get_Frame()
-        {
-            Frame* f = new Frame(_width, _height);
-
-            f->_frame_data.clear();
-
-            for (int i = 0; i < _width * _height; i++)
-            {
-                for (int j = 0; j < 3; j++)
-                {
-                    int rgb = (_data[i * 3 + j] * 255);
-
-                    if (rgb < 0)    rgb = 0;
-                    if (rgb > 255)  rgb = 255;
-
-                    f->_frame_data.push_back((uint8_t)rgb);
-                }
-                f->_frame_data.push_back((uint8_t) 255);
-            }
-
-            return f;
-        }
-
-        int _height;
-        int _width;
-
-        //pixel data is stored as a signed normalized distance from cluster mean in each color channel 
-        //  e.g. _data = rgb / 255
-        vector<double> _data;
-};
-
 
 class Image_Gen
 {
     public:
-        Image_Gen(int height, int depth, string fileName)
-            : _height(height), _depth(depth), _alpha(0.0000005), _n_in(height * depth * 3), _n_hid(height * 2), _d_hid(2), _n_out(_height * 3), _fileName(fileName), _data_type(2)
-            {
-                //new_data();
-                run_images();
-            }
 
-        Image_Gen(int height, int depth, int k, string fileName)
-            : _height(height), _depth(depth), _k(k), _alpha(0.0003), _n_in(height * depth * 4 + _k * 3), _n_hid(height * 3), _d_hid(3), _n_out(_height * 4), _fileName(fileName), _data_type(1)
+        Image_Gen(int h, int w, int k, string fileName)
+            : _h(h), _w(w), _k(k), _alpha(.0000001), _n_in(h * w * 3), _n_hid(h * 3), _d_hid(3), _n_out(h * 3), _fileName(fileName)
             {
-                //new_data();
-                run_images();
-                //generate_images(10);
+                new_data();
+                //run_images();
+                generate_images(100, 1);
                 
+                //for (int i = 0; i < 20; i++)
+                //    generate_noise_image(i);
             }
 
         ~Image_Gen() {} 
@@ -434,7 +494,7 @@ class Image_Gen
 
             double total_cost = 0;
             int size = 300;
-            int trials = 2;
+            int trials = 1;
 
             vector<int> ms;
             for (int i = 1; i <= size; i++) ms.push_back(i);
@@ -442,9 +502,9 @@ class Image_Gen
 
             for (int m = 1; m < size; m++)
             {
-                cout << "Run " << m << ": in " << ms[m] << endl;
+                cout << endl << "Run " << m << ": in " << ms[m] << endl;
 
-                string filename = "input/pron/smolled/in " + to_string(ms[m]) + ".bmp";
+                string filename = "input/pron/in " + to_string(ms[m]) + ".bmp";
 
                 Bitmap *image = new Bitmap();
                 ifstream in;
@@ -456,7 +516,7 @@ class Image_Gen
 
                 Frame *f = new Frame(*image);
 
-                Training_Data td(f, _k);
+                Training_Data td(f, _k, _h, _w);
                 
                 _cdel = 0;
                 double t_sum = 0;
@@ -464,87 +524,103 @@ class Image_Gen
 
                 for (int t = 0; t < trials; t++)
                 {
-                    vector<double> run_cost(run_image(&td, 0));
-                        
                     _wsum = 0;
                     _bsum = 0;
                     _csum = 0;
-
-                    for (auto c : run_cost)
-                        _csum += c * c;
-
-                    t_costs.push_back(_csum / f->_width);
-                    t_sum += _csum / f->_width;
+                    
+                    vector<double> run_cost(run_image(&td, ms[m], m));
                         
-                    apply_cost(run_cost);
+                    for (auto c : run_cost)
+                        _csum += pow(c * c, 0.5);
 
-                    cout << "   Trial " << t << endl;
-                    cout << "       ...run adjusted cost = " << _csum / f->_width << endl;
+                    t_costs.push_back(_csum);
+                    t_sum += _csum;
+
+                    cout << "       ...run total cost = " << _csum << endl;
                     cout << "       ...run weight delta = " << _wsum << endl;
                     cout << "       ...run bias delta = " << _bsum << endl;
-                }
-
-                cout << endl;
-                cout << "   Delta Cost from trials... " << endl; 
-
-                for (int t = 1; t < trials; t++)
-                {
-                    cout << "       " << t - 1 << " to " << t << ": " << t_costs[t - 1] - t_costs[t] << endl;
                 }
 
                 total_cost = ((total_cost * (m - 1)) + (t_sum / trials)) / m;
 
                 cout << endl;
-                cout << "   ...total average cost = " << total_cost << endl << endl;
+                cout << "   ...running average cost = " << total_cost << endl << endl;
 
                 delete image;
                 delete f;
 
-                if (m % 10 == 0)
-                generate_image("input/pron/smolled/in " + to_string(ms[m]) + ".bmp", ms[m], m);
+                //generate_image("input/pron/in " + to_string(ms[m]) + ".bmp", ms[m], m);
 
-                if (m % 50 == 0)
-                {
-                    _n->save_data();
-                    cout << "...csv data written" << endl;
-                }
+                _n->save_data();
+                cout << "...csv data written" << endl;
             }
-            
-            _n->save_data();
 
+            _n->save_data();
             cout << "...csv data written" << endl;
 
             delete _n;
-
         }
 
-        vector<double> run_image(Training_Data *td, int type)
+        vector<double> run_image(Training_Data *td, int img_num, int run_num)
         {
+            Training_Data to_print(td);
             vector<double> cost;
+            
+            int r = 1;
 
             //run over entire image
-            for (int i = _depth - 1; i < td->_width; i++)
+            for (int i = _w - 1; i < td->_width; i++)
             {
-                vector<double> output(_n->run(td->get_Input(_n_in, i, 0, _height, _depth)));
-                vector<double> run_cost(td->get_Cost(output, i + 1, 0, _height));
-
-                //accumulate cost to run later
-                if (type == 0)
+                for (int t = 0; t < 1; t++)
                 {
+                    vector<double> col_cost;
+
+                    _wsum = 0;
+                    _bsum = 0;
+                    int m = 0;
+
+                    for (int j = 0; j < td->_height - _h; j++)
+                    {
+                        vector<double> output(_n->run(td->get_Input(_n_in, i, j)));
+                        vector<double> run_cost(td->get_Cost(output, i + 1, j));
+                        
+                        apply_cost(run_cost);
+
+                        _n->clear();
+
+                        int n = 0;
+
+                        //accumulate costs for entire image
+                        if (col_cost.empty())
+                            for (auto c : run_cost) col_cost.push_back(c);
+                        else
+                            for (auto c : run_cost) col_cost[n++] += c;
+                    }
+
+                    if (i % 50 == 0)     
+                    {
+                        double sum = 0;
+                        for (auto c : col_cost) sum += c;
+
+                        sum /= m;
+                        _wsum /= m;
+                        _bsum /= m;
+
+                        cout << "   ...at trial " << t << ", column " << i << ": cpc = " << sum << ", _wsum = " << _wsum << ", _bsum = " << _bsum << endl;
+
+                        m = 0;
+                    }
+
                     int n = 0;
 
                     //accumulate costs for entire image
                     if (cost.empty())
-                        for (auto c : run_cost) cost.push_back(c);
+                        for (auto c : col_cost) cost.push_back(c);
                     else
-                        for (auto c : run_cost) cost[n++] += c;
+                        for (auto c : col_cost) cost[n++] += c;
+                    
+                    _n->clear();
                 }
-                else
-                {
-                    apply_cost(run_cost);
-                }
-                
-                _n->clear();
             }
 
             return cost;
@@ -584,34 +660,27 @@ class Image_Gen
                 {
                     for (int j = 0; j < _n->_layers[l][i]->_ws.size(); j++)
                     {
-                        _n->_layers[l][i]->_ws[j] += _alpha * _n->_layers[l][i]->_ns[j]->_a * _n->_layers[l][i]->_s;
+                        _n->_layers[l][i]->_ws[j] -= _alpha * _n->_layers[l][i]->_ns[j]->_a * _n->_layers[l][i]->_s;
 
-                        _wsum += pow(_alpha * _n->_layers[l][i]->_ns[j]->_a * _n->_layers[l][i]->_s, 2);
+                        _wsum += pow(pow(_alpha * _n->_layers[l][i]->_ns[j]->_a * _n->_layers[l][i]->_s, 2), 0.5);
                     }
 
-                    _n->_layers[l][i]->_b += _alpha * _n->_layers[l][i]->_s;
+                    _n->_layers[l][i]->_b -= _alpha * _n->_layers[l][i]->_s;
 
-                    _bsum += pow(_alpha * _n->_layers[l][i]->_s, 2);
+                    _bsum += pow(pow(_alpha * _n->_layers[l][i]->_s, 2), 0.5);
                 }
             }
         }
 
-        void generate_images(int n)
+        void generate_noise_image(int n)
         {
-                
             _n = new IG_Net(_n_in, _n_hid, _d_hid, _n_out, _fileName);
 
-            for (int i = 0; i < n; i++)
-            {
-                int r = rand() % 200 + 1;
-                generate_image("input/pron/smolled/in " + to_string(r) + ".bmp", r, i);
-            }
+            cout << "Generating noise... " << endl;
 
-            delete _n;
-        }
+            int r = rand() % 300 + 1;
+            string file = "input/pron/smolled/in " + to_string(r) + ".bmp";
 
-        void generate_image(string file, int n, int j)
-        {
             Bitmap *image = new Bitmap();
             ifstream in;
             ofstream out;
@@ -620,26 +689,142 @@ class Image_Gen
             in >> *image;
             in.close();
 
-            cout << "...image read" << endl;
-
             Frame *f = new Frame(*image);
 
-            Training_Data td(f, _k);
+            Training_Data td(f, _k, _h, _w);
+            td.prep_random();
 
-            cout << "...training data created" << endl;
-
-            //run over entire image
-            for (int i = f->_width - 2; i > _depth - 1; i--)
+            for (int i = _w - 1; i < f->_width - 1; i++)
             {
-                //cout << "   running " << i << " of " << f->_width - 1 << endl;
-                vector<double> output = _n->run(td.get_Input(_n_in, i, 0, _height, _depth));
-                td.set_Column(output, i + 1, 0, _height);
-                _n->clear();
+                vector<double> ns(f->_height * 4, 0);
+                vector<double> col(f->_height * 4, 0);
+
+                for (int j = f->_height - _h; j >= 0; j--)
+                {
+                    vector<double> output = _n->run(td.get_Input(_n_in, i, j));
+
+                    _n->clear();
+
+                    for (int k = j * 4; k < (j + _h) * 4; k++)
+                    {
+                        col[k] = col[k] * ns[k] + output[k - j * 4];
+                        ns[k]++;
+                        col[k] = col[k] / ns[k];
+                    }
+                }
+                
+                /*
+                for (int j = f->_height - _h; j >= 0; j -= _h)
+                {
+                    vector<double> output = _n->run(td.get_Input(_n_in, i, j));
+
+                    for (int k = j * 4; k < (j + _h) * 4; k++)
+                    {
+                        col[k] = col[k] * ns[k] + output[k - j * 4];
+                        ns[k]++;
+                        col[k] = col[k] / ns[k];
+                    }
+
+                    _n->clear();
+                }
+                */
+
+                td.set_Column(col, i + 1, 0, f->_height);
             }
 
             Frame *f2 = td.get_Frame();
 
-            cout << "...new frame gotten" << endl;
+            image->settoFrame(f2->flip());
+
+            out.open("output/image_gen/noise_out " + to_string(n) + ".bmp");
+            out << *image;
+            out.close();
+
+            cout << "...image written" << endl;
+
+            delete _n;
+        }
+
+        void generate_images(int n, int m)
+        {
+            _n = new IG_Net(_n_in, _n_hid, _d_hid, _n_out, _fileName);
+
+            for (int i = 0; i < n; i++)
+            {
+                int r = rand() % 300 + 1;
+                generate_image("input/pron/smolled/in " + to_string(r) + ".bmp", r, (m - 1) * n + i);
+
+                _n->save_data();
+                cout << "...csv data written" << endl;
+            }
+
+            delete _n;
+        }
+
+        void generate_image(string file, int n, int j)
+        {
+            cout << "Generating image " << j << "-" << n << "... " << endl;
+
+            Bitmap *image = new Bitmap();
+            ifstream in;
+            ofstream out;
+
+            in.open(file);
+            in >> *image;
+            in.close();
+
+            Frame *f = new Frame(*image);
+
+            Training_Data_2 td(f, _h, _w);
+
+            //run over entire image
+            for (int i = f->_width - 2; i >= _w; i--)
+            {
+                vector<double> ns(f->_height * 3, 0);
+                vector<double> col(f->_height * 3, 0);
+                //cout << "   running " << i << " of " << f->_width - 1 << endl;
+
+                if (i % 50 == 0)
+                    cout << "   ...generating column " << i << endl;
+
+                for (int j = f->_height - _h; j >= 0; j--)
+                {
+                    vector<double> output = _n->run(td.get_Input(_n_in, i, j));
+
+                    vector<double> run_cost(td.get_Cost(output, i + 1, j));
+                    
+                    apply_cost(run_cost);
+
+                    _n->clear();
+
+                    for (int k = j * 3; k < (j + _h) * 3; k++)
+                    {
+                        col[k] = col[k] * ns[k] + output[k - j * 3];
+                        ns[k]++;
+                        col[k] = col[k] / ns[k];
+                    }
+                }
+                
+                /*
+                for (int j = f->_height - _h; j >= 0; j -= _h)
+                {
+                    vector<double> output = _n->run(td.get_Input(_n_in, i, j));
+
+                    for (int k = j * 4; k < (j + _h) * 4; k++)
+                    {
+                        col[k] = col[k] * ns[k] + output[k - j * 4];
+                        ns[k]++;
+                        col[k] = col[k] / ns[k];
+                    }
+
+                    _n->clear();
+                }
+                */
+
+                td.set_Column(col, i + 1, 0, f->_height);
+            }
+
+            Frame *f2 = td.get_Frame();
 
             image->settoFrame(f2->flip());
 
@@ -649,7 +834,6 @@ class Image_Gen
 
             cout << "...image written" << endl;
         }
-
 
         class IG_Net 
         {
@@ -682,12 +866,12 @@ class Image_Gen
 
                         for (int i = 0; i < n_hid; i++)
                         {
-                            double b = ((double)(rand() % 200 - 100)) / 1000;
+                            double b = ((double)(rand() % 200 - 100)) / 100;
 
                             vector<double> weights(layer_a.size(), 0); 
 
                             for (int j = 0; j < weights.size(); j++)
-                                weights[j] = ((double)(rand() % 200 - 100)) / 1000;
+                                weights[j] = ((double)(rand() % 200 - 100)) / 100;
 
                             layer_b.push_back(new neuron(layer_a, weights, b));
                         }
@@ -697,12 +881,12 @@ class Image_Gen
 
                     for (int i = 0; i < n_out; i++)
                     {
-                        double b = ((double)(rand() % 200 - 100)) / 1000;
+                        double b = ((double)(rand() % 200 - 100)) / 100;
 
                         vector<double> weights(layer_a.size(), 0); 
 
                         for (int j = 0; j < weights.size(); j++)
-                            weights[j] = ((double)(rand() % 200 - 100)) / 1000;
+                            weights[j] = ((double)(rand() % 200 - 100)) / 100;
 
                         layer_out.push_back(new neuron(layer_b, weights, 0));
                     }
@@ -894,9 +1078,11 @@ class Image_Gen
 
         int _k;
 
-        int _height;
+        //height of input window
+        int _h;
         
-        int _depth;
+        //width of input window
+        int _w;
 
         double _alpha;
 
@@ -916,7 +1102,4 @@ class Image_Gen
         double _csum;
         double _wsum;
         double _bsum;
-
-        int _data_type;
-
 };
