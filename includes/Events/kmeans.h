@@ -3,6 +3,7 @@
 #ifndef _KMEANS
 #define _KMEANS
 
+
 #define BIG_NUMBER 1000000000
 #define CONVERGE 1
 
@@ -147,6 +148,7 @@ class Kmeans : public Event
         //donor clusters
         vector<int> _clusters;
 };
+
 
 void Kmeans::Activate(Frame *f, Layer *l, string dID, int rID, int n)
 {

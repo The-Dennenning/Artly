@@ -114,11 +114,11 @@ class Training_Data_2
         Training_Data_2(Frame *f, int h, int w)
             : _height(f->_height), _width(f->_width), _h(h), _w(w)
         {
-            for (int i = 0; i < _width * _height; i++)
+            for (int i = 0; i < _width * _height * 4; i = i + 4)
             {
                 for (int j = 0; j < 3; j++)
                 {
-                    _data.push_back((double)f->_frame_data[i * 4 + j]);
+                    _data.push_back(((double)f->_frame_data[i + j]) / 255);
                 }
             }
         }
@@ -214,11 +214,11 @@ class Training_Data_2
 
             f->_frame_data.clear();
 
-            for (int i = 0; i < _width * _height; i++)
+            for (int i = 0; i < _width * _height * 3; i = i + 3)
             {
                 for (int j = 0; j < 3; j++)
                 {
-                    int rgb = _data[i * 3 + j] * 255;
+                    int rgb = _data[i + j] * 255;
 
                     if (rgb < 0)    rgb = 0;
                     if (rgb > 255)  rgb = 255;
@@ -233,9 +233,6 @@ class Training_Data_2
 
         int _height;
         int _width;
-
-        //number of clusters for kmeans clustering
-        int _k;
 
         //height of window
         int _h;
@@ -439,14 +436,14 @@ class Image_Gen
     public:
 
         Image_Gen(int h, int w, int k, string fileName)
-            : _h(h), _w(w), _k(k), _alpha(.0000001), _n_in(h * w * 3), _n_hid(h * 3), _d_hid(3), _n_out(h * 3), _fileName(fileName)
+            : _h(h), _w(w), _k(k), _alpha(.00000001), _n_in(h * w * 3), _n_hid(h * 3), _d_hid(2), _n_out(h * 3), _fileName(fileName)
             {
-                new_data();
+                //new_data();
                 //run_images();
-                generate_images(100, 1);
+                generate_images(500, 1);
                 
-                //for (int i = 0; i < 20; i++)
-                //    generate_noise_image(i);
+                for (int i = 0; i < 20; i++)
+                    generate_noise_image(i);
             }
 
         ~Image_Gen() {} 
@@ -469,7 +466,7 @@ class Image_Gen
             delete _n;
 
             cout << "Loading second neural network..." << endl;
-            _n = new IG_Net(_n_in, _n_hid, _d_hid, _n_out, "image_gen/wnbs.csv");
+            _n = new IG_Net(_n_in, _n_hid, _d_hid, _n_out, _fileName);
 
             cout << "Running second neural network..." << endl;
             vector<double> results2(_n->run(data_in));
@@ -486,6 +483,7 @@ class Image_Gen
             delete _n;
         }
 
+        /*
         void run_images()
         {
             _n = new IG_Net(_n_in, _n_hid, _d_hid, _n_out, _fileName);
@@ -493,9 +491,12 @@ class Image_Gen
             cout << "...csv data read" << endl;
 
             double total_cost = 0;
-            int size = 300;
+            //size of input image bank
+            int size = 25;
+            //number of trials to run over each image
             int trials = 1;
 
+            //creates random order of images to run
             vector<int> ms;
             for (int i = 1; i <= size; i++) ms.push_back(i);
             random_shuffle(ms.begin(), ms.end());
@@ -504,7 +505,7 @@ class Image_Gen
             {
                 cout << endl << "Run " << m << ": in " << ms[m] << endl;
 
-                string filename = "input/pron/in " + to_string(ms[m]) + ".bmp";
+                string filename = "input/pron/smolled/" + to_string(ms[m]) + ".bmp";
 
                 Bitmap *image = new Bitmap();
                 ifstream in;
@@ -516,7 +517,8 @@ class Image_Gen
 
                 Frame *f = new Frame(*image);
 
-                Training_Data td(f, _k, _h, _w);
+                //creates training data set from image
+                Training_Data_2 td(f, _h, _w);
                 
                 _cdel = 0;
                 double t_sum = 0;
@@ -549,7 +551,7 @@ class Image_Gen
                 delete image;
                 delete f;
 
-                //generate_image("input/pron/in " + to_string(ms[m]) + ".bmp", ms[m], m);
+                generate_image("input/pron/smolled/in " + to_string(ms[m]) + ".bmp", ms[m], m);
 
                 _n->save_data();
                 cout << "...csv data written" << endl;
@@ -561,9 +563,9 @@ class Image_Gen
             delete _n;
         }
 
-        vector<double> run_image(Training_Data *td, int img_num, int run_num)
+        vector<double> run_image(Training_Data_2 *td, int img_num, int run_num)
         {
-            Training_Data to_print(td);
+            Training_Data_2 to_print(td);
             vector<double> cost;
             
             int r = 1;
@@ -625,7 +627,8 @@ class Image_Gen
 
             return cost;
         }
-        
+        */
+
         //Backpropagation step
         void apply_cost(vector<double> cost)
         {
@@ -678,8 +681,8 @@ class Image_Gen
 
             cout << "Generating noise... " << endl;
 
-            int r = rand() % 300 + 1;
-            string file = "input/pron/smolled/in " + to_string(r) + ".bmp";
+            int r = rand() % 25 + 1;
+            string file = "input/bored/smolled/" + to_string(r) + ".bmp";
 
             Bitmap *image = new Bitmap();
             ifstream in;
@@ -691,29 +694,33 @@ class Image_Gen
 
             Frame *f = new Frame(*image);
 
-            Training_Data td(f, _k, _h, _w);
-            td.prep_random();
+            Training_Data_2 td(f, _h, _w);
+            //td.prep_random();
 
             for (int i = _w - 1; i < f->_width - 1; i++)
             {
-                vector<double> ns(f->_height * 4, 0);
-                vector<double> col(f->_height * 4, 0);
+                vector<double> ns(f->_height * 3, 0);
+                vector<double> col(f->_height * 3, 0);
 
-                for (int j = f->_height - _h; j >= 0; j--)
+                for (int j = f->_height - _h; j >= 0; j = j - 3)
                 {
                     vector<double> output = _n->run(td.get_Input(_n_in, i, j));
 
                     _n->clear();
 
-                    for (int k = j * 4; k < (j + _h) * 4; k++)
+                    for (int k = j * 3; k < (j + _h) * 3; k++)
                     {
-                        col[k] = col[k] * ns[k] + output[k - j * 4];
+                        //adds random noise
+                        double r = (rand() % 100) / 100;
+
+                        //takes weighted average of current value + new value + random value
+                        col[k] = col[k] * ns[k] + output[k - j * 3];
                         ns[k]++;
                         col[k] = col[k] / ns[k];
                     }
                 }
                 
-                /*
+                /* for training data 1
                 for (int j = f->_height - _h; j >= 0; j -= _h)
                 {
                     vector<double> output = _n->run(td.get_Input(_n_in, i, j));
@@ -736,7 +743,7 @@ class Image_Gen
 
             image->settoFrame(f2->flip());
 
-            out.open("output/image_gen/noise_out " + to_string(n) + ".bmp");
+            out.open("output/noise_out " + to_string(n) + ".bmp");
             out << *image;
             out.close();
 
@@ -751,8 +758,8 @@ class Image_Gen
 
             for (int i = 0; i < n; i++)
             {
-                int r = rand() % 300 + 1;
-                generate_image("input/pron/smolled/in " + to_string(r) + ".bmp", r, (m - 1) * n + i);
+                int r = rand() % 25 + 1;
+                generate_image("input/bored/smolled/" + to_string(r) + ".bmp", r, (m - 1) * n + i);
 
                 _n->save_data();
                 cout << "...csv data written" << endl;
@@ -804,22 +811,6 @@ class Image_Gen
                         col[k] = col[k] / ns[k];
                     }
                 }
-                
-                /*
-                for (int j = f->_height - _h; j >= 0; j -= _h)
-                {
-                    vector<double> output = _n->run(td.get_Input(_n_in, i, j));
-
-                    for (int k = j * 4; k < (j + _h) * 4; k++)
-                    {
-                        col[k] = col[k] * ns[k] + output[k - j * 4];
-                        ns[k]++;
-                        col[k] = col[k] / ns[k];
-                    }
-
-                    _n->clear();
-                }
-                */
 
                 td.set_Column(col, i + 1, 0, f->_height);
             }
@@ -828,7 +819,7 @@ class Image_Gen
 
             image->settoFrame(f2->flip());
 
-            out.open("output/image_gen/generate_out " + to_string(j) + "-" + to_string(n) + ".bmp");
+            out.open("output/generate_out " + to_string(j) + "-" + to_string(n) + ".bmp");
             out << *image;
             out.close();
 
@@ -841,7 +832,7 @@ class Image_Gen
                 IG_Net() {}
 
                 IG_Net(int n_in, int n_hid, int d_hid, int n_out)
-                    : _n_in(n_in), _n_hid(n_hid), _d_hid(d_hid), _n_out(n_out), _fileName("image_gen/wnbs.csv")
+                    : _n_in(n_in), _n_hid(n_hid), _d_hid(d_hid), _n_out(n_out), _fileName("image_gen/bored_wnbs.csv")
                 {
                     vector<neuron*> layer_in;
                     vector<neuron*> layer_a;

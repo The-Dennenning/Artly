@@ -1,9 +1,9 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "frame.h"
-#include "space.h"
-#include "events.h"
+#include "../frame.h"
+#include "../space.h"
+#include "../events.h"
 
 #define PI 3.1415926
 
@@ -26,7 +26,11 @@ class Camera : public Event
                 _angle[6] = 1;
                 _angle[7] = 0;
                 _angle[8] = 0;
+
+                _l_save = 0;
             }
+
+        double _l_save;
 
         vector<Face*> _fs;
 
@@ -71,7 +75,8 @@ class Camera : public Event
         {
             for (int n = 0; n < l->_frame_num; n++)
             {
-                cout << "Camera Sampling frame " << n << endl;
+                if (n % 100 == 0)
+                    cout << "           camera sampling frame " << n << endl;
                 l->_frames.push_back(sample());
                 update(n);
             }
@@ -81,7 +86,60 @@ class Camera : public Event
         void update(double n)
         {
             _s->_t = n;
+        
+            /* In the Language of Dreams pt 1 
+
+            _coord[0] = ((double) 5400 / 538) * n;
+            */
+           
+            /* In the Language of Dreams pt 4 
+
+            _coord[0] = ((double) 4320 / 788) * (788 - n);
+            */
             
+    
+            /* Submergence pt 3 
+
+            _coord[0] = 7560 - ((double) 7560 / 1160) * n;
+
+            */
+
+            /* Wanderer pt 2 
+                //first zoom in to doorway
+
+            if (_type == 1)
+            {
+                _real_height = ((double) 1080) / pow(10, n / 514.206);
+                _real_width = ((double) 1080) / pow(10, n / 514.206);
+
+                _coord[0] = ((1080 - _real_height) / 1080) * (740 + 175);
+                _coord[1] = ((1080 - _real_width) / 1080) * (436 + 103);
+            }
+                //second zoom out to landscape
+            else if (_type == 2)
+            {
+                _real_height = 200 + (n / 416) * 880;
+                _real_width = 200 + (n / 416) * 880;
+
+                _coord[0] = 300 - (n / 416) * 300;
+                _coord[1] = 350 - (n / 416) * 350;
+            }
+            */
+
+            /* Wanderer pt 1
+            double dl;
+
+            if (n < 764) 
+                dl = 0.000035 * n * n + 0.0005 * n + 1;
+            else
+                dl = -.00001 * (n - 764) * (n - 764) + 0.0028 * (n - 764) + 4;
+
+            for (int i = 0; i < 4; i++)
+                _s->_objects[1]->_verts[i]->_coord[1] -= dl;
+            */
+            
+            
+            /* Eros
             if (n == 100)
             {
                 _s->_objects.clear();
@@ -98,8 +156,16 @@ class Camera : public Event
                 _s->_objects.push_back(_fs[3]);
                 _s->_objects.push_back(_fs[4]);
             }
+           _real_height = ((double) 200) / pow(10, n / 150);
+           _real_width = ((double) 200) / pow(10, n / 150);
 
-            /*
+           _coord[0] = 100 + ((double) -100) / pow(10, n / 150);
+           _coord[1] = 100 + ((double) -100) / pow(10, n / 150);
+            */
+
+
+
+            /* Old Experiments
             _angle[1] += sin(n * 3 / 180);
             _angle[2] += sin(n * 3 / 180);
 
@@ -127,10 +193,10 @@ class Camera : public Event
 
             /*
             */
-/*
+
             if (_type == 1)
             {
-                if (((int) n) % 100 == 0)
+                if (((int) n) % 150 == 0)
                 {
                     _delta_c[0] = ((double) (rand() % 20) / 10) - 1;
                     _delta_c[1] = ((double) (rand() % 20) / 10) - 1;
@@ -157,7 +223,7 @@ class Camera : public Event
                 if (((int) n) % 2 == 0)
                     _s->_t++;
             }
-
+            /*
             if (_type == 2)
             {
                 if (((int) n) % 250 == 0)
@@ -186,13 +252,7 @@ class Camera : public Event
 
                 _s->_t++;
             }
-            */
-
-           _real_height = ((double) 200) / pow(10, n / 150);
-           _real_width = ((double) 200) / pow(10, n / 150);
-
-           _coord[0] = 100 + ((double) -100) / pow(10, n / 150);
-           _coord[1] = 100 + ((double) -100) / pow(10, n / 150);
+                 */
         }
         
         //Samples the given space for a frame of given dimension
@@ -230,7 +290,7 @@ class Camera : public Event
                     }
 
 #ifdef DEBUG
-                    cout << "Intersecting from pixel (" << i << ", " << j << ")" << endl;
+                    //cout << "Intersecting from pixel (" << i << ", " << j << ")" << endl;
 #endif
                     //gives ray to space, where the actual intersection and sampling happens
                     //  intersect returns RGB value, which is then set in frame
@@ -246,6 +306,7 @@ class Camera : public Event
                 }
             }
 
+            delete r;
             return f;
         }
 };

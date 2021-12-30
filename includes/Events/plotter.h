@@ -5,6 +5,7 @@ class Plotter : public Event
     public:
         Plotter(int start, int duration, int width, int height, int op, int p1, int p2) 
             : Event(start, duration, width, height), _op(op), _p1(p1), _p2(p2) {}
+            
         ~Plotter() {}
 
 		void Activate(Frame* f, Layer* l);
@@ -18,39 +19,32 @@ class Plotter : public Event
 
 void Plotter::Activate(Frame* f, Layer* l)
 {
+    Frame *f2;
 
-    if (_op == 0)
-    //Plots frame as passed
+    for (int n = 0; n < l->_frame_num; n++)
     {
-        for (int n = 0; n < l->_frame_num; n++)
-        {
+        //Plots frame as passed
+        if (_op == 0)
             l->_frames.push_back(new Frame(*f));
-            cout << "   Plotter Frame " << n << " Generated" << endl;
-        }
-    }
 
-    if (_op == 1)
-    {
-        f->_clear();
-
-        for (int i = 0; i < _p1; i++)
-            _draw(f, 1, 1);
-
-        l->_frames.push_back(new Frame(*f));
-    }
-
-    if (_op == 2)
-    {
-        f->_clear();
-
-        int rgb[4] = {255, 255, 255, 0};
-
-        for (int i = 0; i < 100; i++)
+        //Plots drawn object as specified by _draw function
+        else if (_op == 1)
         {
-            for (int j = 0; j < 100; j++)
-            {
-                f->set(i, j, rgb);
-            }
+            f->_clear();
+
+            for (int i = 0; i < _p1; i++)
+                _draw(f, 1, 1);
+
+            l->_frames.push_back(new Frame(*f));
+        }
+
+        //Plots colored noise
+        else if (_op == 2)
+        {
+            f2 = new Frame(*f);
+            f2->_clear();
+            f2->_noise_color(_p1);
+            l->_frames.push_back(f2);
         }
     }
 }

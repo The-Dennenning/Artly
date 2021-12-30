@@ -52,7 +52,7 @@ void Rewrite::Activate(Bitmap *b, Layer *l)
 		getFrame(frame, *b);
 		l->_frame_data.push_back(frame);
 		
-		if (n % 10 == 0)
+		if (n % 100 == 0)
 			cout << "	Rewrite Frame " << n << " Generated" << endl; 
 	}
 }
@@ -236,7 +236,7 @@ int* Rewrite::getColor(int n)
 			color[0] = 128;
 			color[1] = 0;
 			color[2] = 128;
-			break;
+			break;n c
 		default: //Black
 			color[0] = 0;
 			color[1] = 0;

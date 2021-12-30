@@ -2,22 +2,7 @@
 **  Render combines events, bitmaps, and layers into a single package
 **  representing the final 'render' from a usage of Artly.
 **
-**  How many ways can one combine these things?
-**
-**      Bitmap -> Event -> Layer (void Generate_Layers)
-**      
-**          This represents layer generation from a seed image. A bitmap
-**          is fed to an event, which generates a layer. The bitmap
-**          represents a single frame, whereas a layer represents n frames.
-**          
-**          this flow is used when an event can generate content from a seed
-**          image. 
-**
-**      Layer + Layer -> Layer (void Composit_Layers)
-**
-**          This represents composing two layers together via masking operations.
-**          It is in this way that output from two different events can be
-**          superimposed in various ways.
+**  
 **
 */
 
@@ -33,18 +18,20 @@ class Render {
 
     public:
         Render() : _scale(1) {}
-        Render(int scale) : _scale(scale) {}
-        Render(int scale, int delay) : _scale(scale), _delay(delay) {}
+        Render(int scale) : _scale(scale), _delay(10), _op(0) {}
+        Render(int scale, int delay) : _scale(scale), _delay(delay), _op(0) {}
+        Render(int scale, int delay, int op) : _scale(scale), _delay(delay), _op(op) {}
 
         ~Render() {for (auto l : _layers) delete l;}
 
         int _scale;
         int _delay;
+        int _op;
 
         //Generates layer
         //  using seed frame and event
         int Add_Layer(Frame* f, Event* e)
-        {
+        { 
             //Create layer 
             //  at start of event, and for duration of event,
             //  with width and height of provided frame
@@ -102,7 +89,7 @@ class Render {
                 int idx2 = get_index(layer_ids.back());
                 layer_ids.pop_back();
 
-                Layer* l = new Layer(_layers[idx1], _layers[idx2], 0);
+                Layer* l = new Layer(_layers[idx1], _layers[idx2], _op);
                 
                 //Collects Garbage
                 //  deletes old layers from memory
@@ -188,7 +175,7 @@ class Render {
 
                 else
                 {
-                    _layers.push_back(new Layer(l1, l2, 0));
+                    _layers.push_back(new Layer(l1, l2, _op));
 
                     delete l1;
                     delete l2;
@@ -205,6 +192,63 @@ class Render {
 
                 cout << endl;
 #endif
+            }
+        }
+
+        void Export(string fileName)
+        {
+            int step = 500;
+
+            Composite_All();
+
+            GifWriter gifw;
+            ofstream out;
+            Layer *l = _layers.back();
+            
+            int n = 0;
+
+            for (int i = 0; i < l->_frame_num; i++)
+            {
+                if (i % step == 0)
+                {
+                    cout << "   beginning gif at " << i << endl;
+                    GifBegin(&gifw, ("output/" + fileName + "_" + to_string(n) + ".gif").c_str(), l->_width * _scale, l->_height * _scale, _delay);
+                    n++;
+                }
+
+                GifWriteFrame(&gifw, flip(l->_frames[i]).data(), l->_width * _scale, l->_height * _scale, _delay);
+
+                if (i % 100 == 0)
+                    cout << "       writing frame " << i << endl;
+
+                if ((i % step == (step - 1)) || (i == l->_frame_num - 1))
+                {
+                    cout << "   ending gif at " << i << endl;
+                    GifEnd(&gifw);
+
+                    if ((n + 1) * step > l->_frame_num) break;
+                }
+            }
+
+            for (int i = n * step; i < l->_frame_num; i++)
+            {
+                if (i == n * step)
+                {
+                    cout << "   beginning gif at " << i << endl;
+                    GifBegin(&gifw, ("output/" + fileName + "_" + to_string(n) + ".gif").c_str(), l->_width * _scale, l->_height * _scale, _delay);
+                    n++;
+                }
+
+                GifWriteFrame(&gifw, flip(l->_frames[i]).data(), l->_width * _scale, l->_height * _scale, _delay);
+
+                if (i % 100 == 0)
+                    cout << "       writing frame " << i << endl;
+
+                if (i == l->_frame_num - 1)
+                {
+                    cout << "   ending gif at " << i << endl;
+                    GifEnd(&gifw);
+                }
             }
         }
 
@@ -235,6 +279,30 @@ class Render {
         void layer_SetMask(int layer_id, int val)
         {
             _layers[layer_id]->set_mask(val);
+        }
+
+        vector<uint8_t> scale(Frame* f)
+        {
+            vector<uint8_t> scale;
+
+            for (int i = 0; i < f->_width; i++)
+            {
+                for (int m1 = 0; m1 < _scale; m1++)
+                {
+                    for (int j = 0; j < f->_height; j++)
+                    {
+                        for (int m2 = 0; m2 < _scale; m2++)
+                        {
+                            for (int k = 0; k < 4; k++)
+                            {
+                                scale.push_back(f->_frame_data[i * f->_height * 4 + (j * 4) + k]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return scale;
         }
 
         vector<uint8_t> flip(Frame* f)
@@ -272,7 +340,27 @@ class Render {
             return _layers.back();
         }
 
-    private:
+        Layer* Scale()
+        {
+            Layer* l_s = new Layer(0, _layers.back()->_frame_num, _layers.back()->_width * _scale, _layers.back()->_height * _scale);
+
+            for (int n = 0; n < _layers.back()->_frame_num; n++)
+            {
+                l_s->_frames.push_back(new Frame(scale(_layers.back()->_frames[n]), _layers.back()->_width * _scale, _layers.back()->_height * _scale));
+            }
+
+            delete _layers.back();
+            _layers.pop_back();
+
+            return l_s;
+        }
+
+        Layer* pop_content()
+        {
+            Composite_All();
+
+            return Scale();
+        }
 
         std::vector<Layer*> _layers;
 

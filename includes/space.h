@@ -94,6 +94,33 @@ class Face : public Object
         Face(Space* s, double scale, int ID) 
             : Object(s), _scale(scale), _ID(ID), _type(0) {}
 
+        Face(Space* s, double scale, int ID, int type, vector<double> cs, double z) 
+            : Object(s), _scale(scale), _ID(ID), _type(type) 
+        {
+            Vertex* v1 = new Vertex(cs[0], cs[1], z);
+            _verts.push_back(v1);
+
+            Vertex* v2 = new Vertex(cs[0], cs[3], z);
+            _verts.push_back(v2);
+
+            Vertex* v3 = new Vertex(cs[2], cs[3], z);
+            _verts.push_back(v3);
+
+            Vertex* v4 = new Vertex(cs[2], cs[1], z);
+            _verts.push_back(v4);
+
+            v1->_conto.push_back(make_pair(v4, v2));
+            v2->_conto.push_back(make_pair(v1, v3));
+            v3->_conto.push_back(make_pair(v2, v4));
+            v4->_conto.push_back(make_pair(v3, v1));
+            
+            _normal[0] = 0;
+            _normal[1] = 0;
+            _normal[2] = 1;
+
+            _faces.push_back(this);
+        }
+
         //face ID
         //  the index that this face has in object's face vector
         int _ID;
@@ -122,7 +149,7 @@ class Face : public Object
 void Space::intersect(Ray *r)
 {
 #ifdef DEBUG
-    cout << "   checking intersection with face..." << endl;
+    //cout << "   checking intersection with face..." << endl;
 #endif
 
     for (auto o : _objects)
@@ -184,10 +211,12 @@ int Vertex::check(double p[], int id)
             z[4] = p[2];
 
 #ifdef DEGUG 
+/*
         cout << "       checking angle " << i << " between..." << endl;
         cout << "           x = [" << x[1] << ", " << x[2] << ", " << x[3] << ", " << x[4] << "]" << endl;
         cout << "           y = [" << y[1] << ", " << y[2] << ", " << y[3] << ", " << y[4] << "]" << endl;
         cout << "           z = [" << z[1] << ", " << z[2] << ", " << z[3] << ", " << z[4] << "]" << endl;
+        */
 #endif
 
         double t;
@@ -261,11 +290,13 @@ int Vertex::check(double p[], int id)
         double l2 = pow((pow(d[0], 2) + pow(d[1], 2) + pow(d[2], 2)), 0.5);
 
 #ifdef DEBUG
+/*
         cout << "       t = " << t << endl;
         cout << "       l = [" << l[0] << ", " << l[1] << ", " << l[2] << "]" << endl;
         cout << "       d = [" << d[0] << ", " << d[1] << ", " << d[2] << "]" << endl;
         cout << "       l1 = " << l1 << endl;
         cout << "       l2 = " << l2 << endl;
+        */
 #endif
 
 
@@ -296,10 +327,12 @@ int Face::check(Ray* r)
     );
 
 #ifdef DEBUG
+/*
         cout << "       num = " << num << endl;
         cout << "           normal = [" << _normal[0] << ", " << _normal[1] << ", " << _normal[2] << "]" << endl;
         cout << "           ray = [" << r->_angle[0] << ", " << r->_angle[1] << ", " << r->_angle[2] << "]" << endl;
         cout << "       denom = " << denom << endl;
+        */
 #endif
 
     //is parallel to plane that face is on
@@ -309,7 +342,7 @@ int Face::check(Ray* r)
     double t = num / denom;
 
 #ifdef DEBUG
-    cout << "       t = " << t << endl;
+    //cout << "       t = " << t << endl;
 #endif
 
     //intersects with face behind camera, thus not applicable
@@ -323,7 +356,7 @@ int Face::check(Ray* r)
         p[k] = r->_coord[k] + r->_angle[k] * t;
 
 #ifdef DEBUG
-    cout << "       ray intersects face at (" << p[0] << ", " << p[1] << ", " << p[2] << ")" << endl;
+    //cout << "       ray intersects face at (" << p[0] << ", " << p[1] << ", " << p[2] << ")" << endl;
 #endif
 
     //for every vertex in face,
@@ -334,7 +367,7 @@ int Face::check(Ray* r)
     for (auto v : _verts)
     {
 #ifdef DEBUG
-        cout << "   checking verticies..." << endl;
+        //cout << "   checking verticies..." << endl;
 #endif
         if (v->check(p, _ID))
         {
@@ -349,7 +382,7 @@ int Face::check(Ray* r)
 void Face::get_content_value(Ray* r, double p[3])
 {
 #ifdef DEBUG
-    cout << "   Getting Content Value..." << endl;
+    //cout << "   Getting Content Value..." << endl;
 #endif
 
     double v1[3]; 
@@ -434,7 +467,7 @@ void Face::get_content_value(Ray* r, double p[3])
         else i = 0;
 
 #ifdef DEBUG
-    cout << "       pre scale and mod... (" << i << ", " << j << ")" << endl;
+    //cout << "       pre scale and mod... (" << i << ", " << j << ")" << endl;
 #endif
 
     i = ((int) (i * _scale)) % _content->_width;
@@ -446,41 +479,49 @@ void Face::get_content_value(Ray* r, double p[3])
 */
     int n;
 
+    /* in the language of dreams pt 1 */
+
+    n = _s->_t % _content->_frames.size();
+
+    /* Submergence pt 3 
+    n = _s->_t % _content->_frames.size();
+    */
+
+    /* Wanderer pt 2 
+
+    n = _type;
+    */
+
+    /* Wanderer pt 1
     if (_type == 0)
         n = 0;
     else if (_type == 1)
     {
-        if (_s->_t < 50)
+        if (_s->_t < 218)
+            n = 0;
+        else if (_s->_t < 468)
             n = 1;
-        else if (_s->_t < 100)
+        else if (_s->_t < 764)
             n = 2;
-        else
+        else if (_s->_t < 1008)
             n = 3;
-    }
-    else if (_type == 2)
-    {
-        if (_s->_t < 200)
+        else if (_s->_t < 1258)
             n = 4;
-        else if (_s->_t < 230)
-            n = 5;
-        else if (_s->_t < 260)
-            n = 6;
         else
-            n = 7;
+            n = 5;
     }
-    else if (_type == 3)
-        n = 8;
-    else if (_type == 4)
-        n = 9;
-
+    */
+    
     for (int k = 0; k < 3; k++)
         r->rgb.push_back(_content->_frames[n]->_frame_data[(i * _content->_height + j) * 4 + k]);
 
 #ifdef DEBUG
+/*
     if (rand() % 10000 == 1) {
         cout << "       Sampling frame " << _s->_t % _content->_frames.size() << endl;
         cout << "           at pixel (" << i << ", " << j << ")" << endl;
     }
+    */
 #endif
 } 
 

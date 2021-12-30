@@ -68,21 +68,42 @@ class Painter : public Event
 //This outputs the painted-on frame
 void Painter::Activate(Frame* f, Layer* l)
 {
+	int _strokeCount = 0;
+
 	for (int n = 0; n < l->_frame_num; n++)
 	{
 		l->_frames.push_back(new Frame(*f));
 		f = l->_frames[n];
 
+		/* of the stone */
+		int _strokeAdj = sin((((double) n) * 3.1415) / 50) * (((double)_strokePer) / 2) + ((double)_strokePer) / 2;
+		
+		for (int i = 0; i < _strokeAdj; i++)
+		{
+			if (_strokeCount + i < _s.size()) {
+				Paint_Stroke(f, *_s[_strokeCount + i]);
+			}
+		}
+
+		_strokeCount += _strokeAdj;
+		
+
+		/* normal 
 		for (int i = 0; i < _strokePer; i++)
 		{
 			if (n * _strokePer + i < _s.size()) {
 				Paint_Stroke(f, *_s[n * _strokePer + i]);
 			}
 		}
+		*/
+
 #ifdef DEBUG
 		cout << "	Painterly Frame " << n << " Generated" << endl; 
 #endif
 	}
+
+	for (auto s : _s)
+		delete s;
 }
 
 
@@ -95,6 +116,9 @@ void Painter::Activate(Frame* f, Layer* l)
 void Painter::Generate_Reference()
 {
 	int N = 2 * _radius + 1;
+
+	if (N > 30) N = 30;
+
 	double *Gaussian = new double[N];
 	double sum[3];
 	double total;
@@ -105,7 +129,8 @@ void Painter::Generate_Reference()
 		temp[i] = new int*[_height];
 		for (int j = 0; j < _height; j++)
 		{
-			temp[i][j] = new int[3];
+			temp[i][j] = new int[4];
+			temp[i][j][3] = 255;
 		}
 	}
 
@@ -173,6 +198,7 @@ void Painter::Generate_Reference()
 	}
 
 	delete[] temp;
+	delete[] Gaussian;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -290,6 +316,8 @@ void Painter::Generate_Layer()
 
 	//Limit number of strokes layer can have
 	if (_strokeNum > _strokeMax) _strokeNum = _strokeMax;
+
+	delete[] D;
 }
 
 void Painter::Paint_Stroke(Frame* f, const Stroke& s) {

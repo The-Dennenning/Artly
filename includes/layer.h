@@ -23,8 +23,8 @@ class Layer {
         Layer(Layer* l)
             : _start(l->_start), _frame_num(l->_frame_num), _end(l->_start + l->_frame_num), _width(l->_width), _height(l->_height), _id(next_id)
         {
-            for (auto l : l->_frames)
-                _frames.push_back(new Frame(*l));
+            for (auto f : l->_frames)
+                _frames.push_back(new Frame(*f));
 
             next_id++;
         }
@@ -52,7 +52,7 @@ class Layer {
             next_id++;
 
 #ifdef DEBUG
-            cout << "Compositing layers, with start " << _start << ", duration " << _frame_num << ", and end " << _end << endl;
+            cout << "Compositing layers, with start " << _start << ", duration " << _frame_num << ", and end " << _end << ", with operation " << op << endl;
 #endif
 
             if ((_start == l1->_start) && ((_start + (l1->_end - l1->_start)) == l2->_start))
@@ -61,9 +61,6 @@ class Layer {
                     _frames.push_back(new Frame(*l));
                 for (auto l : l2->_frames)
                     _frames.push_back(new Frame(*l));
-#ifdef DEBUG
-                cout << "Layer Composited by vector operation" << endl;
-#endif
             }
 
             else if ((_start == l2->_start) && ((_start + (l2->_end - l2->_start)) == l1->_start))
@@ -72,23 +69,13 @@ class Layer {
                     _frames.push_back(new Frame(*l));
                 for (auto l : l1->_frames)
                     _frames.push_back(new Frame(*l));
-
-#ifdef DEBUG
-                cout << "Layer Composited by vector operation" << endl;
-#endif
             }
 
             else
             {
-#ifdef DEBUG
-                cout << "Layer Composited by element-wise operation" << endl;
-#endif
-
                 //compose frame data together
                 for (int i = 0; i < _frame_num; i++)
                 {
-                    std::vector<uint8_t> frame_data;
-
                     //Check if first layer is active
                     if ((i >= (l1->_start - _start)) && (i < (l1->_end - _start)))
                         l1_active = 1;
@@ -101,10 +88,12 @@ class Layer {
                     else
                         l2_active = 0;
 
-                    for (int j = 0; j < _width * _height * 4; j = j + 4)
-                    {
 
-                        if (l1_active && l2_active)
+                    if (l1_active && l2_active)
+                    {
+                        std::vector<uint8_t> frame_data;
+
+                        for (int j = 0; j < _width * _height * 4; j = j + 4)
                         {
                             r1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 0];
                             r2 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 0];
@@ -115,53 +104,111 @@ class Layer {
                             a1 = l1->_frames[i - l1->_start + _start]->_frame_data[j + 3];
                             a2 = l2->_frames[i - l2->_start + _start]->_frame_data[j + 3];
 
-                            ao = a1 + (int) (a2 * ((float)(255 - a1) / 255));
+                            if (op == 0)
+                            {
+                                ao = a1 + (int) ((float)a2 * ((float)(255 - a1) / 255));
+                                
+                                /*
+                                if (rand() % 10000 == 0)
+                                {
+                                    if (a1 != 0 || a2 != 0)
+                                        cout << "ao, a1, a2 = (" << ao << ", " << a1 << ", " << a2 << ")" << endl;
+                                }
+                                */
 
-                            frame_data.push_back((ao != 0) ? (uint8_t)((r1*a1 + r2*a2*((float)(255 - a1) / 255)) / ao) : 0);
-                            frame_data.push_back((ao != 0) ? (uint8_t)((g1*a1 + g2*a2*((float)(255 - a1) / 255)) / ao) : 0);
-                            frame_data.push_back((ao != 0) ? (uint8_t)((b1*a1 + b2*a2*((float)(255 - a1) / 255)) / ao) : 0);
-                            frame_data.push_back((uint8_t)ao);
+                                if (ao != 0)
+                                {
+                                    frame_data.push_back((uint8_t)(((float)r1*a1 + r2*a2*((float)(255 - a1) / 255)) / ao));
+                                    frame_data.push_back((uint8_t)(((float)g1*a1 + g2*a2*((float)(255 - a1) / 255)) / ao));
+                                    frame_data.push_back((uint8_t)(((float)b1*a1 + b2*a2*((float)(255 - a1) / 255)) / ao));
+                                    frame_data.push_back((uint8_t)ao);
+                                }
+                                else
+                                {
+                                    frame_data.push_back(r1);
+                                    frame_data.push_back(g1);
+                                    frame_data.push_back(b1);
+                                    frame_data.push_back(a1);
+                                }
+                            }
+                            else if (op == 1)
+                            {
+                                if (a1 >= a2)
+                                {
+                                    frame_data.push_back((uint8_t) r1);
+                                    frame_data.push_back((uint8_t) g1);
+                                    frame_data.push_back((uint8_t) b1);
+                                    frame_data.push_back((uint8_t) a1);
+                                }
+                                else
+                                {
+                                    frame_data.push_back((uint8_t) r2);
+                                    frame_data.push_back((uint8_t) g2);
+                                    frame_data.push_back((uint8_t) b2);
+                                    frame_data.push_back((uint8_t) a2);
+                                }
+                            }
+                            else if (op == 2)
+                            {
+                                if ((j % (_width * 4)) >= (_width * 2))
+                                {
+                                    frame_data.push_back((uint8_t) r1);
+                                    frame_data.push_back((uint8_t) g1);
+                                    frame_data.push_back((uint8_t) b1);
+                                    frame_data.push_back((uint8_t) a1);
+                                }
+                                else
+                                {
+                                    frame_data.push_back((uint8_t) r2);
+                                    frame_data.push_back((uint8_t) g2);
+                                    frame_data.push_back((uint8_t) b2);
+                                    frame_data.push_back((uint8_t) a2);
+                                }
+                            }
+                            
                         }
-                        if (l1_active && !l2_active)
-                        {
-                            frame_data.push_back(l1->_frames[i - l1->_start + _start]->_frame_data[j + 0]);
-                            frame_data.push_back(l1->_frames[i - l1->_start + _start]->_frame_data[j + 1]);
-                            frame_data.push_back(l1->_frames[i - l1->_start + _start]->_frame_data[j + 2]);
-                            frame_data.push_back(l1->_frames[i - l1->_start + _start]->_frame_data[j + 3]);
-                        }
-                        if (!l1_active && l2_active)
-                        {
-                            frame_data.push_back(l2->_frames[i - l2->_start + _start]->_frame_data[j + 0]);
-                            frame_data.push_back(l2->_frames[i - l2->_start + _start]->_frame_data[j + 1]);
-                            frame_data.push_back(l2->_frames[i - l2->_start + _start]->_frame_data[j + 2]);
-                            frame_data.push_back(l2->_frames[i - l2->_start + _start]->_frame_data[j + 3]);
-                        }
-                        if (!l1_active && !l2_active)
-                        {
-                            frame_data.push_back(0);
-                            frame_data.push_back(0);
-                            frame_data.push_back(0);
-                            frame_data.push_back(0);
-                        }
+                        
+                        _frames.push_back(new Frame(frame_data, _width, _height));
                     }
 
-                    _frames.push_back(new Frame(frame_data, _width, _height));
+                    if (l1_active && !l2_active)
+                        _frames.push_back(new Frame(*l1->_frames[i - l1->_start + _start]));
+                    
+                    if (!l1_active && l2_active)
+                        _frames.push_back(new Frame(*l2->_frames[i - l2->_start + _start]));
+
+                    if (!l1_active && !l2_active)
+                        _frames.push_back(new Frame(_width, _height));
 
     #ifdef DEBUG
-                    if (l1_active && l2_active)
-                        cout << "   Frame " << i << " Composited, with l" << l1->_id << " & l" << l2->_id << endl;
-                    if (!l1_active && l2_active)
-                        cout << "   Frame " << i << " Composited, with l" << l2->_id << endl;
-                    if (l1_active && !l2_active)
-                        cout << "   Frame " << i << " Composited, with l" << l1->_id << endl;
-                    if (!l1_active && !l2_active)
-                        cout << "   Frame " << i << " Composited, with neither layer" << endl;
+                    if (i % 10 == 0)
+                    {
+                        if (l1_active && l2_active)
+                            cout << "   Frame " << i << " Composited, with l" << l1->_id << " & l" << l2->_id << endl;
+                        if (!l1_active && l2_active)
+                            cout << "   Frame " << i << " Composited, with l" << l2->_id << endl;
+                        if (l1_active && !l2_active)
+                            cout << "   Frame " << i << " Composited, with l" << l1->_id << endl;
+                        if (!l1_active && !l2_active)
+                            cout << "   Frame " << i << " Composited, with neither layer" << endl;
+                    }
     #endif
                 }
             }
         }
 
         void set_mask(int val);
+
+        void fade_in(int start, int duration);
+        void fade_in(int start, int duration, double scale);
+
+        void fade_out(int start, int duration);
+
+        void scan(int start, int dur, double dx, double dy);
+        
+        void glitch(int start, int dur, int degree);
+
+        void shift_color(int start, int dur, double degree);
 
         int _start;
         int _frame_num;
@@ -182,6 +229,118 @@ void Layer::set_mask(int val)
     for (int i = 0; i < _frame_num; i++)
         for (int j = 0; j < _width * _height * 4; j = j + 4)
             _frames[i]->_frame_data[j + 3] = (uint8_t)val;
+}
+
+void Layer::fade_in(int start, int duration)
+{
+    double step = ((double) 255 / duration);
+    double sum = 0;
+
+    for (int i = start; i < start + duration; i++)
+    {
+        if (i >= _end) return;
+
+        for (int j = 0; j < _width * _height * 4; j = j + 4)
+            _frames[i]->_frame_data[j + 3] = (uint8_t) sum;
+
+        sum += step;
+
+        if (sum > 255) sum = 255;
+    }
+}
+
+void Layer::fade_in(int start, int duration, double scale)
+{
+    double step = ((double) 255 / duration) * scale;
+    double sum = 0;
+
+    int ub;
+
+    if (start + duration >= _frame_num)
+        ub = _frame_num;
+    else
+        ub = start + duration;
+
+    for (int i = start; i < ub; i++)
+    {
+        for (int j = 0; j < _width * _height * 4; j = j + 4)
+            _frames[i]->_frame_data[j + 3] = (uint8_t) sum;
+
+        sum += step;
+
+        if (sum > 255) sum = 255;
+    }
+}
+
+void Layer::fade_out(int start, int duration)
+{
+    double step = ((double) 255 / duration);
+    double sum = 255;
+
+    int ub;
+
+    if (start + duration >= _frame_num)
+        ub = _frame_num;
+    else
+        ub = start + duration;
+
+    for (int i = start; i < ub; i++)
+    {        
+        for (int j = 0; j < _width * _height * 4; j = j + 4)
+            _frames[i]->_frame_data[j + 3] = (uint8_t) sum;
+
+        sum -= step;
+        
+        if (sum < 0) sum = 0;
+    }
+}
+
+void Layer::scan(int start, int dur, double dx, double dy)
+{
+    int ub;
+
+    if (start + dur >= _frame_num)
+        ub = _frame_num;
+    else
+        ub = start + dur;
+
+    for (int n = start; n < ub; n++)
+    {
+        int _dx = (n - start) * dx;
+        int _dy = (n - start) * dy;
+
+        _frames[n]->_offset(_dx, _dy);
+    }
+}
+
+void Layer::glitch(int start, int dur, int degree)
+{
+    int ub;
+
+    if (start + dur >= _frame_num)
+        ub = _frame_num;
+    else
+        ub = start + dur;
+
+    for (int n = start; n < ub; n++)
+    {
+        _frames[n]->_glitch((n - start) * degree);
+    }
+}
+
+void Layer::shift_color(int start, int dur, double degree)
+{
+    int ub;
+
+    if (start + dur >= _frame_num)
+        ub = _frame_num;
+    else
+        ub = start + dur;
+
+    for (int n = start; n < ub; n++)
+    {
+        _frames[n]->_color_shift(((double) n) * degree);
+    }
 }
 
 #endif

@@ -1,11 +1,15 @@
+
 #include "layer.h"
 #include "frame.h"
+#include "strokes.h"
+
+#ifndef EVENTS_H
+#define EVENTS_H
+
 
 #include <vector>
 #include <algorithm>
 
-#ifndef EVENTS_H
-#define EVENTS_H
 
 class Event {
 	public:
@@ -20,16 +24,19 @@ class Event {
 		int _height;
 };
 
-// Computes n choose s, efficiently
-double Binomial(int n, int s)
-{
-    double res;
+	#ifndef BIN
+	#define BIN
+	// Computes n choose s, efficiently
+	double Binomial(int n, int s)
+	{
+		double res;
 
-    res = 1;
-    for (int i = 1 ; i <= s ; i++)
-        res = (n - i + 1) * res / i ;
+		res = 1;
+		for (int i = 1 ; i <= s ; i++)
+			res = (n - i + 1) * res / i ;
 
-    return res;
-}// Binomial
+		return res;
+	}// Binomial
+	#endif
 
 #endif

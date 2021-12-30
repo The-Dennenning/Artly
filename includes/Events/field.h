@@ -6,10 +6,12 @@ class Field : public Event
         Field(int start, int dur, int width, int height, int n, int t) :
             Event(start, dur, width, height), _n(n), _t(t), _s(0)
             {
+                
                 cout << "   generating field..." << endl;
                 generate_field();
                 cout << "   generating particles..." << endl;
                 generate_particles();
+                
             }
 
         void Activate(Frame* f, Layer* l);
@@ -58,15 +60,90 @@ class Field : public Event
 
 void Field::Activate(Frame* f, Layer* l)
 {
+    
     for (int i = 0; i < _duration; i++)
     {
-        cout << "   calculating frame " << i << endl;
+        if (i % 10 == 0)
+            cout << "   calculating frame " << i << endl;
+
         print_to_frame(f);
         update();
         l->_frames.push_back(f);
         f = new Frame(*f);
         f->_clear();
     }
+
+    /* that one fun glitchy thing
+    int i = 50;
+    int j = 50;
+
+    int r = 0;
+    int b = 0;
+    int g = 0;
+
+    double dx = 1;
+    double dy = 10;
+
+    double t = 100;
+
+    int flag = 0;
+
+    pen_line* pl;
+
+    for (int n = 0; n < _duration; n++)
+    {
+        cout << "   calculating frame " << n << endl;
+        pl = new pen_line(f, 50, i, j, r, g, b, 200, dx, dy, t);
+
+        l->_frames.push_back(f);
+
+        f = new Frame(*f);
+        
+        i += 50;
+        
+        if (i >= f->_width)
+        {
+            i = i % _width;
+            j += 100;
+
+            t -= 20;
+            
+            if (t == 0)
+                t = 1;
+            
+
+        /*
+            _n = 200;
+
+
+            if (flag == 0)
+            {
+                flag = 1;
+                t -= 40;
+            }
+            else 
+            {
+                flag = 0;
+                t += 20;
+            }
+            
+        }
+
+        if (j >= f->_height)
+        {
+            j = j % _height;
+            j += 100;
+        }
+
+        r += rand() % 10 - 5;
+        b += rand() % 10 - 5;
+        g += rand() % 10 - 5;
+        
+        r = r % 255;
+        b = b % 255;
+        g = g % 255;
+    }
+    */
 }
 
 void Field::generate_field()
@@ -81,7 +158,7 @@ void Field::generate_field()
         {
             vector<double> vals;
                 vals.push_back(((double)(rand() % 21 - 10)) / 10);
-                vals.push_back(((double)(rand() % 21 - 10)) / 10);
+                vals.push_back(((double)(rand() % 19 - 10)) / 10);
                 vals.push_back(rand() % 255 + 1);
                 vals.push_back(rand() % 255 + 1);
                 vals.push_back(rand() % 255 + 1);
@@ -90,6 +167,7 @@ void Field::generate_field()
 
         temp.push_back(rows);
     }
+    
     
     int N = 9;
 
@@ -150,7 +228,9 @@ void Field::generate_field()
 
         _field.push_back(_rows);
     }
+    
 
+    /*
     for (int i = 0; i < _width; i++)
     {
         for(int j = 0; j < _height; j++)
@@ -159,6 +239,9 @@ void Field::generate_field()
             _field[i][j][1] *= cos(2 * 3.1415 * (((double) j) / _height));
         }
     }
+
+    */
+    
 
     /*
     //adds attractors / repulsors
@@ -202,6 +285,7 @@ void Field::generate_particles()
     {
         vector<double> particle;
             //sets starting position of particle
+            //particle.push_back(rand() % (_width / 2) + (_width / 4));
             particle.push_back(rand() % _width);
             particle.push_back(rand() % _height);
             //sets starting velocity of particle to field value
@@ -255,10 +339,18 @@ void Field::update()
         _particles[n][3] *= 0.95;
         _particles[n][4] *= 0.95;
         _particles[n][5] *= 0.95;
+        
 
         //update positions
         _particles[n][0] += _particles[n][2];
         _particles[n][1] += _particles[n][3];
+
+        //create corridor 
+        if ((_particles[n][0] < ((2 * _width) / 3)) && (_particles[n][0] > ((1 * _width) / 3)))
+        {
+            _particles[n][2] *= -1;
+            _particles[n][4] *= -1;
+        }
         
         //check boundary conditions
         while (_particles[n][0] < 0)
