@@ -40,6 +40,24 @@ class Kmeans : public Event
                 while(!iterate(&_data, &_means, &_clusters)) {}    
             }
 
+            
+        Kmeans(Frame* f, Bitmap* b, vector<Frame*> refs, int k, int run_id) :
+            Event(0, 0, f->_width, f->_height), _b(b), _k(k), _iteration(0) 
+            {
+                _dID = to_string(run_id);
+
+                initialize(f, &_data, &_means);
+
+                while(!iterate(&_data, &_means, &_clusters)) {}    
+
+                for (int i = 0; i < refs.size(); i++)
+                {
+                    cout << "   transferring style " << i << "..." << endl;
+                    transfer_style(refs[i], k, i);
+                }
+                    
+            }
+
         Kmeans(int start, int dur, Frame* f, Bitmap* b, int k) :
             Event(start, dur, b->getSize(0), b->getSize(1)), _b(b), _k(k), _iteration(0) 
             {
@@ -49,7 +67,7 @@ class Kmeans : public Event
             }
 
         Kmeans(int start, int dur, Frame* f, Bitmap* b, int k, int i) :
-            Event(start, dur, b->getSize(0), b->getSize(1)), _b(b), _k(k), _iteration(0) 
+            Event(start, dur, b->getSize(0), b->getSize(1)), _b(b), _k(k), _iteration(0), _type(BLUE)
             {
                 initialize(f, &_data, &_means);
 
@@ -57,7 +75,13 @@ class Kmeans : public Event
 
                 _dID = to_string(i);
 
-                rectangulate(); 
+                /*
+                cout << "       rectangulating..." << endl;
+                rectangulate();
+                */ 
+
+                cout << "       sorting " << i << ":" << k << "..." << endl;
+                sort();
             }
 
         Kmeans(int start, int dur, Frame* f, Bitmap* b, int k, int i, int type) :
@@ -92,10 +116,14 @@ class Kmeans : public Event
         void print_bitmaps(vector<vector<int>> *data, vector<int> *clusters, int type);
 
         void print_bitmap(vector<vector<int>> *data);
+        
+        void print_bitmap(vector<vector<int>> *data, string id);
 
         void print_mean(vector<vector<int>> *means, vector<int> *clusters);
         
         void transfer_style(vector<vector<int>> *data, vector<vector<int>> *means, vector<int> *clusters);
+        
+        void transfer_style(Frame* ref, int k, int iID);
 
         void rectangulate();
 
@@ -364,6 +392,37 @@ void Kmeans::print_bitmap(vector<vector<int>> *data)
 }
 
 
+void Kmeans::print_bitmap(vector<vector<int>> *data, string id)
+{
+    ofstream out;
+    string outfile;
+    Frame temp(_b->getSize(0), _b->getSize(1));
+
+    for (int j = 0; j < data->size(); j++)
+    {
+        temp._frame_data[(j * 4) + 0] = (*data)[j][0];
+        temp._frame_data[(j * 4) + 1] = (*data)[j][1];
+        temp._frame_data[(j * 4) + 2] = (*data)[j][2];
+        temp._frame_data[(j * 4) + 3] = 255;
+    }
+
+    _b->settoFrame(temp.flip());
+    
+    outfile  = "output/result_" + id + " "; 
+    outfile += _dID;
+    outfile += "k=" + to_string(_k);
+    outfile += ".bmp";
+
+    out.open(outfile, ios::binary);
+    out << *_b;
+    out.close();
+
+#ifdef DEBUG
+        cout << "           bitmap " << outfile << " printed." << endl;
+#endif
+}
+
+
 void Kmeans::print_mean(vector<vector<int>> *means, vector<int> *clusters)
 {
     ofstream out;
@@ -468,6 +527,125 @@ void Kmeans::print_bitmaps(vector<vector<int>> *data, vector<int> *clusters, int
  *              take vector from reciever cluster to donor cluster ******* this is the one that is implemented
  *                  apply vector to reciever pixel rgb
 */
+
+
+void Kmeans::transfer_style(Frame* ref, int k, int rID)
+{
+    vector<vector<int>> data;
+    vector<vector<int>> means;
+    vector<int> clusters;
+
+    _rID = rID;
+
+#ifdef DEBUG
+    cout << "       kmeansing reference image..." << endl;
+#endif
+
+    initialize(ref, &data, &means);
+
+    while(!iterate(&data, &means, &clusters)) {}
+
+
+    vector<int> mapping(_k, 0);
+
+#ifdef DEBUG
+    cout << "       Mapping donor means to reciever means..." << endl;
+#endif
+
+    for (int i = 0; i < _k; i++)
+    {
+        double closest_distance = BIG_NUMBER;
+        int distance;
+        int closest_mean = 0;
+
+        for (int j = 0; j < _k; j++)
+        {
+            distance = pow(pow(means[j][0] - _means[i][0], 2) 
+                         + pow(means[j][1] - _means[i][1], 2) 
+                         + pow(means[j][2] - _means[i][2], 2)
+            , 0.5);
+
+            if ((distance < closest_distance))
+            {
+                closest_distance = distance;
+                closest_mean = j;
+            }
+        }
+
+        mapping[i] = closest_mean;
+    }
+
+
+#ifdef DEBUG
+    cout << "       Applying color pallete transfer..." << endl;
+#endif
+
+    vector<vector<int>> result;
+
+    int N = 9;
+
+    double *Gaussian = new double[N];
+    double sum[3];
+    double total;
+
+    for (int k = 0; k < N; k++)
+        Gaussian[k] = Binomial(N, k);
+
+    for (int i = 0; i < _width; i++)
+    {
+        for (int j = 0; j < _height; j++)
+        {
+            vector<int> rgb_value(3, 0);
+            int rgb_vector;
+
+            //Zero out summing variable
+            for (int k = 0; k < 3; k++)
+                sum[k] = 0;
+            total = 0;
+
+            int lb = -(N / 2);
+            int ub = (N / 2) + (N % 2);
+
+            //Computes value of filter over pixel (i, j) given sized filter N
+            for (int g_i = lb; g_i < ub; g_i++)
+            {
+                for (int g_j = lb; g_j < ub; g_j++)
+                {
+                    //Skips values if out of bounds
+                    if (i + g_i >= 0 && i + g_i < _width)
+                    {
+                        if ((j + g_j >= 0) && (j + g_j < _height))
+                        {
+                            for (int k = 0; k < 3; k++)
+                                sum[k] += Gaussian[g_i + (N / 2)] * Gaussian[g_j + (N / 2)] * (means[mapping[_clusters[(i + g_i) * _height + (j + g_j)]]][k] - _means[_clusters[(i + g_i) * _height + (j + g_j)]][k]);
+
+                            total += Gaussian[g_i + (N / 2)] * Gaussian[g_j + (N / 2)];
+                        }
+                    }
+                }
+            }
+
+            //Assigns value to temporary holding
+            //	So as to not mess with other filter calculations
+            for (int k = 0; k < 3; k++)
+            {
+                rgb_vector = (int) (sum[k] / total);
+                rgb_value[k] = _data[i * _height + j][k] + rgb_vector;
+                    
+                if (rgb_value[k] < 0)           rgb_value[k] = 0;
+                else if (rgb_value[k] > 255)    rgb_value[k] = 255;
+            }
+            
+            result.push_back(rgb_value);
+        }
+    }
+
+#ifdef DEBUG
+    cout << "       printing result..." << endl;
+#endif
+
+    print_bitmap(&result, "style" + to_string(rID) + "_");
+}
 
 void Kmeans::transfer_style(vector<vector<int>> *data, vector<vector<int>> *means, vector<int> *clusters)
 {
@@ -719,7 +897,7 @@ void Kmeans::rectangulate()
         }
     }
 
-    print_bitmap(&result);
+    print_bitmap(&result, "rectangulate");
 }
 
 
@@ -803,7 +981,7 @@ void Kmeans::sort()
     }
 
     cout << "       printing..." << endl;
-    print_bitmap(&result);
+    print_bitmap(&result, "sort");
 }
 
 #endif

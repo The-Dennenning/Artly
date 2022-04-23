@@ -54,70 +54,107 @@ void run_doodles();
 
 void run_bodhi();
 
+void run_solstice();
+
 
 int main()
 {
     srand(time(NULL));
 
-    run_bodhi();
+    run_solstice();
 
 }
 
-void run_bodhi()
+void run_solstice()
 {
-    vector<Frame*> inits;
-    vector<Bitmap*> images;
     ofstream out;
     ifstream in;
     Frame* f;
 
     vector<Kdata*> data;
+    vector<Frame*> inits;
+    vector<Frame*> refs;
+    vector<Bitmap*> images;
+    vector<int> type;
+    vector<int> width;
+    vector<int> height;
 
-    int width[4] = {1080, 1080, 1172, 896};
-    int height[4] = {1324, 866, 1412, 1232};
     
-    int k_array[6] = {1, 2, 3, 4, 8, 16};
+    int k_array[5] = {1, 2, 3, 4, 8};
     
     int _t = 20;
-    int _k = 4;
-    int _n = 4;
+    int _k = 5;
+    int _n = 11;
+
+    for (int i = 0; i <= _n; i++)
+    {
+        type.push_back(i);
+    }
+    
+    cout << "   Loading Reference Images..." << endl;
+
+    for (int i = 1; i <= 3; i++)
+    {
+        Bitmap *image = new Bitmap();
+        string instring("input/cellular/" + to_string(i) + ".bmp");
+
+        in.open(instring);
+        in >> *image;
+        in.close();
+        
+        f = new Frame(*image);
+
+        refs.push_back(f);
+
+        delete image;
+
+        cout << "       ...reference " << i << " loaded" << endl;
+    }
 
     cout << "   Loading Images..." << endl;
 
-    for (int i = 0; i <= 3; i++)
+    for (int i = 0; i <= _n; i++)
     {
-        images.push_back(new Bitmap());
-        string instring("input/bozposter/" + to_string(i) + ".bmp");
+        Bitmap *image = new Bitmap();
+        string instring("input/hazey/" + to_string(i) + ".bmp");
 
         in.open(instring);
-        in >> *(images.back());
+        in >> *image;
         in.close();
         
-        f = new Frame(*(images.back()));
+        f = new Frame(*image);
 
         inits.push_back(f);
 
-        cout << "       ...image set " << i << " loaded" << endl;
+        images.push_back(image);
+        width.push_back(image->getSize(0));
+        height.push_back(image->getSize(1));
+
+        cout << "       ...image " << i << " loaded" << endl;
     }
 
-    cout << "   Making the rectangles happen..." << endl;
+    //cout << "   Making the rectangles/pixelsorts happen..." << endl;
+    cout << "   kmeansing images..." << endl;
 
-    for (int i = 0; i <= 3; i++)
+    for (int i = 0; i <= _n; i++)
     {
         for (int j = 0; j < _k; j++)
         {
-            Kmeans *km = new Kmeans(0, 1, inits[i], images[i], k_array[j], i);
+            Kmeans *km = new Kmeans(0, 1, inits[i], images[type[i]], k_array[j], i);
+            //Kmeans *km2 = new Kmeans(inits[i], images[type[i]], refs, k_array[j], i);
 
             data.push_back(km->get_data());
+
+            delete km;
         }
     }
 
     cout << "   Making the collages happen..." << endl;
 
-
-    for (int _i = 0; _i <= 3; _i++)
+    
+    for (int _i = 0; _i <= 0; _i++)
     {
-        Frame *result = new Frame(width[_i], height[_i]);
+        Frame *result = new Frame(width[type[_i]], height[type[_i]]);
 
         for (int t = 0; t < _t; t++)
         {
@@ -152,12 +189,11 @@ void run_bodhi()
                 }
             }
 
-            images[_i]->settoFrame(result->flip());
+            images[type[_i]]->settoFrame(result->flip());
 
-            out.open("output/bodhi_collage_out " + to_string(t) + ".bmp");
-            out << *(images[_i]);
+            out.open("output/marijuana_glitch_collage " + to_string(t) + ".bmp");
+            out << *(images[type[_i]]);
             out.close();
-
         }
     }
 }
